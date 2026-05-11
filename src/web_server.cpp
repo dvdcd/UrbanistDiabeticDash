@@ -25,9 +25,12 @@ void DashWebServer::begin() {
     JsonDocument doc;
     doc["wifi_ssid"]          = cfg.wifi_ssid;
     // wifi_password intentionally omitted (write-only from the UI).
+    doc["cgm_source"]         = static_cast<int>(cfg.cgm_source);
     doc["dexcom_username"]    = cfg.dexcom_username;
     // dexcom_password intentionally omitted.
     doc["dexcom_region_us"]   = cfg.dexcom_region_us;
+    doc["nightscout_url"]     = cfg.nightscout_url;
+    // nightscout_secret intentionally omitted.
     doc["glucose_low"]        = cfg.glucose_low;
     doc["glucose_high"]       = cfg.glucose_high;
     doc["glucose_warn_low"]   = cfg.glucose_warn_low;
@@ -58,27 +61,34 @@ void DashWebServer::begin() {
       store_.load(cfg);
 
       if (doc["wifi_ssid"].is<String>())
-        cfg.wifi_ssid         = doc["wifi_ssid"].as<String>();
+        cfg.wifi_ssid           = doc["wifi_ssid"].as<String>();
       if (doc["wifi_password"].is<String>() &&
           doc["wifi_password"].as<String>().length() > 0)
-        cfg.wifi_password     = doc["wifi_password"].as<String>();
+        cfg.wifi_password       = doc["wifi_password"].as<String>();
+      if (doc["cgm_source"].is<int>())
+        cfg.cgm_source          = static_cast<CgmSource>(doc["cgm_source"].as<int>());
       if (doc["dexcom_username"].is<String>())
-        cfg.dexcom_username   = doc["dexcom_username"].as<String>();
+        cfg.dexcom_username     = doc["dexcom_username"].as<String>();
       if (doc["dexcom_password"].is<String>() &&
           doc["dexcom_password"].as<String>().length() > 0)
-        cfg.dexcom_password   = doc["dexcom_password"].as<String>();
+        cfg.dexcom_password     = doc["dexcom_password"].as<String>();
       if (doc["dexcom_region_us"].is<bool>())
-        cfg.dexcom_region_us  = doc["dexcom_region_us"].as<bool>();
+        cfg.dexcom_region_us    = doc["dexcom_region_us"].as<bool>();
+      if (doc["nightscout_url"].is<String>())
+        cfg.nightscout_url      = doc["nightscout_url"].as<String>();
+      if (doc["nightscout_secret"].is<String>() &&
+          doc["nightscout_secret"].as<String>().length() > 0)
+        cfg.nightscout_secret   = doc["nightscout_secret"].as<String>();
       if (doc["glucose_low"].is<int>())
-        cfg.glucose_low       = doc["glucose_low"].as<int>();
+        cfg.glucose_low         = doc["glucose_low"].as<int>();
       if (doc["glucose_high"].is<int>())
-        cfg.glucose_high      = doc["glucose_high"].as<int>();
+        cfg.glucose_high        = doc["glucose_high"].as<int>();
       if (doc["glucose_warn_low"].is<int>())
-        cfg.glucose_warn_low  = doc["glucose_warn_low"].as<int>();
+        cfg.glucose_warn_low    = doc["glucose_warn_low"].as<int>();
       if (doc["glucose_warn_high"].is<int>())
-        cfg.glucose_warn_high = doc["glucose_warn_high"].as<int>();
+        cfg.glucose_warn_high   = doc["glucose_warn_high"].as<int>();
       if (doc["unit_mgdl"].is<bool>())
-        cfg.unit_mgdl         = doc["unit_mgdl"].as<bool>();
+        cfg.unit_mgdl           = doc["unit_mgdl"].as<bool>();
 
       store_.save(cfg);
       req->send(200, "application/json", "{\"ok\":true}");

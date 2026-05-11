@@ -15,6 +15,17 @@
   <form id="form" autocomplete="off">
 
     <section>
+      <h2>CGM Source</h2>
+      <label>
+        Data source
+        <select name="cgm_source" id="cgm-source-select">
+          <option value="0">Dexcom Share</option>
+          <option value="1">Nightscout</option>
+        </select>
+      </label>
+    </section>
+
+    <section>
       <h2>WiFi</h2>
       <label>
         Network name (SSID)
@@ -27,8 +38,8 @@
       </label>
     </section>
 
-    <section>
-      <h2>Dexcom</h2>
+    <section id="dexcom-section">
+      <h2>Dexcom Share</h2>
       <label>
         Dexcom username (email)
         <input name="dexcom_username" type="email" autocomplete="off">
@@ -45,6 +56,22 @@
           <option value="false">Outside United States</option>
         </select>
       </label>
+    </section>
+
+    <section id="nightscout-section" style="display:none">
+      <h2>Nightscout</h2>
+      <label>
+        Nightscout URL
+        <input name="nightscout_url" type="url" autocomplete="off"
+               placeholder="https://mysite.fly.dev">
+      </label>
+      <label>
+        API secret
+        <input name="nightscout_secret" type="password" autocomplete="new-password"
+               placeholder="Leave blank if no auth / to keep current">
+      </label>
+      <p class="hint">xDrip+, Dexcom Share bridge, and Libre all push to Nightscout.
+        Enable the REST API in your Nightscout settings.</p>
     </section>
 
     <section>
@@ -87,11 +114,19 @@
 
   <script>
     const status = document.getElementById('status');
+    const sourceSelect = document.getElementById('cgm-source-select');
 
     function setStatus(msg, isError) {
       status.textContent = msg;
       status.className = isError ? 'error' : 'success';
     }
+
+    function applySourceVisibility(val) {
+      document.getElementById('dexcom-section').style.display   = val === '0' ? '' : 'none';
+      document.getElementById('nightscout-section').style.display = val === '1' ? '' : 'none';
+    }
+
+    sourceSelect.addEventListener('change', e => applySourceVisibility(e.target.value));
 
     // Populate form with current config on load (passwords excluded).
     fetch('/config')
@@ -101,6 +136,7 @@
           const el = document.querySelector(`[name="${key}"]`);
           if (el) el.value = val;
         }
+        applySourceVisibility(String(cfg.cgm_source ?? 0));
       })
       .catch(() => setStatus('Could not load current config.', true));
 
@@ -108,7 +144,8 @@
       e.preventDefault();
       const data = {};
       new FormData(e.target).forEach((val, key) => {
-        if (['glucose_low','glucose_high','glucose_warn_low','glucose_warn_high'].includes(key)) {
+        if (['glucose_low','glucose_high','glucose_warn_low','glucose_warn_high',
+             'cgm_source'].includes(key)) {
           data[key] = parseInt(val, 10);
         } else if (['dexcom_region_us', 'unit_mgdl'].includes(key)) {
           data[key] = val === 'true';

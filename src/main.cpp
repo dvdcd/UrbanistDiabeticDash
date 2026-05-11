@@ -2,6 +2,7 @@
 #include <WiFi.h>
 #include "config_store.h"
 #include "dexcom_source.h"
+#include "nightscout_source.h"
 #include "display_renderer.h"
 #include "web_server.h"
 
@@ -18,7 +19,7 @@ static DashConfig     config;
 static DisplayRenderer renderer;
 static AppState       state;
 
-static DexcomSource  *source     = nullptr;
+static CGMSource     *source     = nullptr;
 static DashWebServer *web_server = nullptr;
 static CGMData        cgm_data;
 
@@ -92,7 +93,11 @@ void setup() {
 
   start_web_server();
 
-  if (config.dexcom_username.isEmpty()) {
+  bool needs_cgm_config = (config.cgm_source == CGM_NIGHTSCOUT)
+      ? config.nightscout_url.isEmpty()
+      : config.dexcom_username.isEmpty();
+
+  if (needs_cgm_config) {
     char ip[20];
     WiFi.localIP().toString().toCharArray(ip, sizeof(ip));
     renderer.show_message("Configure at:", ip);
@@ -100,7 +105,9 @@ void setup() {
     return;
   }
 
-  source = new DexcomSource(config);
+  source = (config.cgm_source == CGM_NIGHTSCOUT)
+      ? static_cast<CGMSource *>(new NightscoutSource(config))
+      : static_cast<CGMSource *>(new DexcomSource(config));
   state  = STATE_DASHBOARD;
 
   // Fetch immediately on boot rather than waiting POLL_INTERVAL_MS.

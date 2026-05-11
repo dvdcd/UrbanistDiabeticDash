@@ -20,6 +20,7 @@ bool ConfigStore::load(DashConfig &out) {
   out.glucose_warn_high  = prefs.getInt(   "g_warnhi",   160);
   out.unit_mgdl          = prefs.getBool(  "unit_mgdl",  true);
   out.timezone           = prefs.getString("timezone",   "UTC0");
+  out.brightness         = prefs.getUChar( "brightness",  200);
   prefs.end();
   return out.wifi_ssid.length() > 0;
 }
@@ -41,6 +42,7 @@ void ConfigStore::save(const DashConfig &c) {
   prefs.putInt(   "g_warnhi",   c.glucose_warn_high);
   prefs.putBool(  "unit_mgdl",  c.unit_mgdl);
   prefs.putString("timezone",   c.timezone);
+  prefs.putUChar( "brightness",  c.brightness);
   prefs.end();
 }
 

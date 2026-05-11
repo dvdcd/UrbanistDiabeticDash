@@ -7,13 +7,12 @@ class DisplayRenderer {
  public:
   void begin();
 
-  // Called every 500 ms from loop() to handle blink animation.
   void draw(const CGMData &data, const DashConfig &config);
-
-  // Show a simple two-line message (used during boot/setup states).
   void show_message(const char *line1, const char *line2 = nullptr);
-
   void fill_black();
+
+  void set_flipped(bool f) { flipped_ = f; }
+  void set_brightness(uint8_t b) { if (dma_) dma_->setBrightness8(b); }
 
   MatrixPanel_I2S_DMA *panel() { return dma_; }
 
@@ -28,5 +27,6 @@ class DisplayRenderer {
 
   uint16_t value_color_(int mgdl, const DashConfig &cfg) const;
 
-  MatrixPanel_I2S_DMA *dma_ = nullptr;
+  MatrixPanel_I2S_DMA *dma_     = nullptr;
+  bool                 flipped_ = false;
 };

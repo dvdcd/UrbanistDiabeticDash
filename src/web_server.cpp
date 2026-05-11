@@ -36,6 +36,7 @@ void DashWebServer::begin() {
     doc["glucose_warn_low"]   = cfg.glucose_warn_low;
     doc["glucose_warn_high"]  = cfg.glucose_warn_high;
     doc["unit_mgdl"]          = cfg.unit_mgdl;
+    doc["timezone"]           = cfg.timezone;
 
     String json;
     serializeJson(doc, json);
@@ -89,6 +90,9 @@ void DashWebServer::begin() {
         cfg.glucose_warn_high   = doc["glucose_warn_high"].as<int>();
       if (doc["unit_mgdl"].is<bool>())
         cfg.unit_mgdl           = doc["unit_mgdl"].as<bool>();
+      if (doc["timezone"].is<String>() &&
+          doc["timezone"].as<String>().length() > 0)
+        cfg.timezone            = doc["timezone"].as<String>();
 
       store_.save(cfg);
       req->send(200, "application/json", "{\"ok\":true}");

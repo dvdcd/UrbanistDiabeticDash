@@ -79,23 +79,58 @@ void DisplayRenderer::draw_glucose_(int value_mgdl, uint16_t color) {
   dma_->print(value_mgdl);
 }
 
-// Trend arrows rendered as ASCII characters at size 1 — avoids custom bitmaps.
-// Two characters wide for DoubleUp/DoubleDown so they stay visible at this size.
+// Trend arrow drawn as pixel lines — cleaner than ASCII at this scale.
+// All arrows fit in a 9×11 px box centered at (x0, y0).
 void DisplayRenderer::draw_trend_arrow_(int trend_code, uint16_t color) {
-  dma_->setTextSize(1);
-  dma_->setTextColor(color);
-  dma_->setCursor(55, 7);
+  constexpr int CX = 59;   // center x of arrow box
+  constexpr int CY = 11;   // center y of arrow box
+
+  // shaft endpoints and arrowhead direction encoded per trend
+  // dx,dy = shaft vector (from tail to tip); head = 3-px arrowhead arms
+  struct { int x1,y1,x2,y2; } shaft;
+  int hx1=0,hy1=0,hx2=0,hy2=0;  // arrowhead arm endpoints relative to tip
 
   switch (trend_code) {
-    case 1: dma_->print("^^"); break;   // DoubleUp
-    case 2: dma_->print(" ^"); break;   // SingleUp
-    case 3: dma_->print(" /"); break;   // FortyFiveUp
-    case 4: dma_->print(" -"); break;   // Flat
-    case 5: dma_->print(" \\"); break;  // FortyFiveDown
-    case 6: dma_->print(" v"); break;   // SingleDown
-    case 7: dma_->print("vv"); break;   // DoubleDown
-    default: dma_->print(" ?"); break;
+    case 1:  // DoubleUp — two vertical lines
+      dma_->drawLine(CX-2, CY+4, CX-2, CY-4, color);
+      dma_->drawLine(CX-2, CY-4, CX-4, CY-2, color);
+      dma_->drawLine(CX-2, CY-4, CX,   CY-2, color);
+      dma_->drawLine(CX+2, CY+4, CX+2, CY-4, color);
+      dma_->drawLine(CX+2, CY-4, CX,   CY-2, color);
+      dma_->drawLine(CX+2, CY-4, CX+4, CY-2, color);
+      return;
+    case 7:  // DoubleDown — two vertical lines
+      dma_->drawLine(CX-2, CY-4, CX-2, CY+4, color);
+      dma_->drawLine(CX-2, CY+4, CX-4, CY+2, color);
+      dma_->drawLine(CX-2, CY+4, CX,   CY+2, color);
+      dma_->drawLine(CX+2, CY-4, CX+2, CY+4, color);
+      dma_->drawLine(CX+2, CY+4, CX,   CY+2, color);
+      dma_->drawLine(CX+2, CY+4, CX+4, CY+2, color);
+      return;
+    case 2:  // SingleUp
+      shaft = {CX, CY+4, CX, CY-4};
+      hx1=CX-3; hy1=CY-1; hx2=CX+3; hy2=CY-1;
+      break;
+    case 6:  // SingleDown
+      shaft = {CX, CY-4, CX, CY+4};
+      hx1=CX-3; hy1=CY+1; hx2=CX+3; hy2=CY+1;
+      break;
+    case 3:  // FortyFiveUp
+      shaft = {CX-3, CY+3, CX+3, CY-3};
+      hx1=CX; hy1=CY-3; hx2=CX+3; hy2=CY;
+      break;
+    case 5:  // FortyFiveDown
+      shaft = {CX-3, CY-3, CX+3, CY+3};
+      hx1=CX, hy1=CY+3; hx2=CX+3; hy2=CY;
+      break;
+    default:  // Flat / unknown
+      shaft = {CX-4, CY, CX+4, CY};
+      hx1=CX+1; hy1=CY-3; hx2=CX+1; hy2=CY+3;
+      break;
   }
+  dma_->drawLine(shaft.x1, shaft.y1, shaft.x2, shaft.y2, color);
+  dma_->drawLine(shaft.x2, shaft.y2, hx1, hy1, color);
+  dma_->drawLine(shaft.x2, shaft.y2, hx2, hy2, color);
 }
 
 void DisplayRenderer::draw_age_(time_t timestamp) {
@@ -128,16 +163,16 @@ void DisplayRenderer::draw_status_label_(int mgdl, const DashConfig &cfg) {
 
   if (mgdl <= cfg.glucose_low) {
     dma_->setTextColor(dma_->color565(255, 34, 0));
-    dma_->print("LOW");
+    dma_->print("LO");
   } else if (mgdl >= cfg.glucose_high) {
     dma_->setTextColor(dma_->color565(255, 34, 0));
-    dma_->print("HIGH");
+    dma_->print("HI");
   } else if (mgdl <= cfg.glucose_warn_low) {
     dma_->setTextColor(dma_->color565(255, 204, 0));
-    dma_->print("LOW?");
+    dma_->print("LO?");
   } else if (mgdl >= cfg.glucose_warn_high) {
     dma_->setTextColor(dma_->color565(255, 204, 0));
-    dma_->print("HIGH?");
+    dma_->print("HI?");
   }
   // In-range: leave blank.
 }
@@ -185,18 +220,32 @@ void DisplayRenderer::draw_status_bar_(uint16_t color) {
 }
 
 void DisplayRenderer::draw_bottom_msg_(const CGMData &data) {
-  if (data.valid && data.error.isEmpty()) return;
-
   dma_->setTextSize(1);
   dma_->setCursor(2, 24);
 
   if (!data.valid) {
     dma_->setTextColor(dma_->color565(255, 34, 0));
     dma_->print(data.error.isEmpty() ? "NO DATA" : data.error.substring(0, 20));
-  } else if (data.error == "STALE") {
+    return;
+  }
+  if (data.error == "STALE") {
     dma_->setTextColor(dma_->color565(140, 140, 140));
     dma_->print("STALE");
+    return;
   }
+
+  // Normal operation — show current time.
+  time_t now = time(nullptr);
+  if (now <= 0) return;
+  struct tm t;
+  localtime_r(&now, &t);
+  int hour = t.tm_hour % 12;
+  if (hour == 0) hour = 12;
+  char buf[9];
+  snprintf(buf, sizeof(buf), "%d:%02d %s", hour, t.tm_min,
+           t.tm_hour < 12 ? "AM" : "PM");
+  dma_->setTextColor(dma_->color565(80, 80, 80));
+  dma_->print(buf);
 }
 
 // ── Main draw entry point ─────────────────────────────────────────────────────

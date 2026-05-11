@@ -37,6 +37,10 @@ static constexpr unsigned long WIFI_TIMEOUT_MS  = 15000UL;
 static Adafruit_LIS3DH lis_;
 static bool            lis_ok_        = false;
 static unsigned long   last_btn_ms_   = 0;
+static bool            flip_pending_  = false;   // what the accelerometer currently sees
+static bool            flip_committed_= false;   // what's actually applied to the display
+static unsigned long   flip_since_ms_ = 0;       // when flip_pending_ last changed
+static constexpr unsigned long FLIP_SETTLE_MS = 2000;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -166,12 +170,20 @@ void loop() {
     }
   }
 
-  // ── Accelerometer orientation ─────────────────────────────────────────────
+  // ── Accelerometer orientation (2 s settle to avoid thrashing) ────────────
   if (lis_ok_) {
     sensors_event_t evt;
     lis_.getEvent(&evt);
-    // Y > 1 m/s² means gravity is pulling "up" relative to the board — flipped.
-    renderer.set_flipped(evt.acceleration.y > 1.0f);
+    // Negative Y means gravity pulls toward the connector side — panel is upside down.
+    bool sensed = (evt.acceleration.y < -1.0f);
+    if (sensed != flip_pending_) {
+      flip_pending_ = sensed;
+      flip_since_ms_ = now;
+    }
+    if (flip_pending_ != flip_committed_ && (now - flip_since_ms_) >= FLIP_SETTLE_MS) {
+      flip_committed_ = flip_pending_;
+      renderer.set_flipped(flip_committed_);
+    }
   }
 
   // Redraw every DRAW_INTERVAL_MS for wave animation and blink.

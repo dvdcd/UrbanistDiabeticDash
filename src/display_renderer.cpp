@@ -217,22 +217,47 @@ void DisplayRenderer::draw_sparkline_(const std::vector<int> &spark,
   }
 }
 
-// Animated wave strip — two interfering sine waves give an organic ocean feel.
-// The color stays the status color (green/yellow/red); brightness ripples across.
-void DisplayRenderer::draw_status_bar_(uint16_t color) {
-  unsigned long t = millis();
-  uint8_t r = ((color >> 11) & 0x1F) << 3;
-  uint8_t g = ((color >> 5)  & 0x3F) << 2;
-  uint8_t b = ( color        & 0x1F) << 3;
+// Fast integer hash for per-pixel noise — no float rand() needed.
+static inline float px_hash(int x, int row, int t_slot) {
+  uint32_t n = (uint32_t)(x * 1619 + row * 31337 + t_slot * 3571);
+  n ^= (n << 13); n ^= (n >> 17); n ^= (n << 5);
+  return (n & 0xFFFF) / 65535.0f;   // 0..1
+}
 
-  for (int x = 0; x < 128; x++) {
-    float w = 0.35f
-      + 0.40f * (0.5f + 0.5f * sinf(x * 0.17f - t * 0.004f))
-      + 0.25f * (0.5f + 0.5f * sinf(x * 0.07f + t * 0.0025f));
-    uint16_t px = dma_->color565(
-      (uint8_t)(r * w), (uint8_t)(g * w), (uint8_t)(b * w));
-    dma_->drawPixel(x, 22, px);
-    dma_->drawPixel(x, 23, px);
+// Blue ocean wave strip — each row gets a distinct wave so they don't look like
+// a single band. Four overlapping sine waves at irrational ratios break up the
+// regularity; a slow noise flutter adds the final organic wobble.
+void DisplayRenderer::draw_status_bar_(uint16_t /*color*/) {
+  unsigned long t   = millis();
+  int           t4  = (int)(t >> 6);   // noise bucket changes every ~64 ms
+
+  for (int row = 0; row < 2; row++) {
+    float roff = row * 1.618f;   // golden-ratio phase shift between rows
+
+    for (int x = 0; x < 128; x++) {
+      float ft = t * 0.001f;
+
+      // Four waves at incommensurate frequencies — adds up to a lumpy envelope.
+      float w = sinf(x * 0.130f - ft * 3.00f + roff)
+              + sinf(x * 0.071f + ft * 2.10f - roff * 1.3f) * 0.55f
+              + sinf(x * 0.211f - ft * 3.30f + roff * 0.7f) * 0.35f
+              + sinf(x * 0.047f + ft * 1.40f - roff * 0.5f) * 0.25f;
+      w /= 2.15f;   // roughly −1..1
+
+      // Gentle noise flutter (low amplitude so it's texture not noise).
+      float noise = (px_hash(x, row, t4) - 0.5f) * 0.18f;
+      w = w * 0.75f + noise;   // blend: mostly wave, tiny noise
+
+      // Map to subtle brightness range — keep it dim enough to be a trim.
+      float bright = 0.30f + 0.20f * w;   // 0.10 .. 0.50
+
+      // Ocean blue: deep→bright blue tones, slight cyan in front row.
+      uint8_t r_out = (uint8_t)(  0.0f * bright);
+      uint8_t g_out = (uint8_t)( (row == 0 ? 55.0f : 35.0f) * bright);
+      uint8_t b_out = (uint8_t)(210.0f * bright + 20.0f);
+
+      dma_->drawPixel(x, 22 + row, dma_->color565(r_out, g_out, b_out));
+    }
   }
 }
 

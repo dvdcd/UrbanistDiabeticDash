@@ -172,7 +172,7 @@ void DisplayRenderer::draw_sparkline_(const std::vector<int> &spark,
 
   for (size_t i = 0; i < count; i++) {
     int mgdl    = spark[start_i + i];
-    int bar_h   = max(1, map(constrain(mgdl, 40, 400), 40, 400, 1, HEIGHT));
+    int bar_h   = max(1, (int)map(constrain(mgdl, 40, 400), 40, 400, 1, HEIGHT));
     int bx      = X0 + static_cast<int>(i) * BAR_W;
     int by      = Y0 + HEIGHT - bar_h;
     uint16_t c  = value_color_(mgdl, cfg);

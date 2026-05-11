@@ -162,8 +162,10 @@ void DashWebServer::begin() {
   server_.on(
     "/update", HTTP_POST,
     [this](AsyncWebServerRequest *req) {
-      bool ok = !Update.hasError();
-      req->send(ok ? 200 : 500, "text/plain", ok ? "OK" : "FAILED");
+      // Request handler fires after ALL body chunks — safe to finalize here.
+      bool ok = !Update.hasError() && Update.end(true);
+      Serial.printf("[OTA] %s\n", ok ? "Done" : Update.errorString());
+      req->send(ok ? 200 : 500, "text/plain", ok ? "OK" : Update.errorString());
       if (ok && restart_cb_) restart_cb_();
     },
     nullptr,  // no multipart upload handler
@@ -172,19 +174,14 @@ void DashWebServer::begin() {
       if (index == 0) {
         Serial.printf("[OTA] Start: %u bytes\n", total);
         if (!Update.begin(total > 0 ? total : UPDATE_SIZE_UNKNOWN, U_FLASH)) {
-          Update.printError(Serial);
+          Serial.printf("[OTA] begin failed: %s\n", Update.errorString());
         }
       }
       if (!Update.hasError() && Update.write(data, len) != len) {
-        Update.printError(Serial);
+        Serial.printf("[OTA] write error at %u\n", index);
       }
-      if (index + len >= total) {
-        if (Update.end(true)) {
-          Serial.printf("[OTA] Done: %u bytes\n", index + len);
-        } else {
-          Update.printError(Serial);
-        }
-      }
+      // Do NOT call Update.end() here — request handler does it once,
+      // after all chunks. Calling end() mid-stream was corrupting the image.
     }
   );
 

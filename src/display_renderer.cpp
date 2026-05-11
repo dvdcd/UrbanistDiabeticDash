@@ -31,8 +31,8 @@ static const HUB75_I2S_CFG::i2s_pins MATRIX_PINS = {
 //      Age            x=71..95  y=3..10  (GFX size-1 font: 6×8 px/char)
 //      Status label   x=71..95  y=13..20
 //      Sparkline      x=88..127 y=2..21  (40×20 px bar chart)
-//    y 22..23  solid status-color strip
-//    y 24..31  bottom message (1 line, size-1 font)
+//    y 22..31  animated wave strip (10 rows)
+//      Clock text     x=2..~80  y=24..31  (overlaid on wave, transparent bg)
 
 void DisplayRenderer::begin() {
   HUB75_I2S_CFG cfg(64, 32, 2, MATRIX_PINS);
@@ -65,11 +65,14 @@ void DisplayRenderer::show_message(const char *line1, const char *line2) {
 // ── Color helpers ─────────────────────────────────────────────────────────────
 
 uint16_t DisplayRenderer::value_color_(int mgdl, const DashConfig &cfg) const {
+  auto c565 = [this](uint32_t rgb) -> uint16_t {
+    return dma_->color565((rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, rgb & 0xFF);
+  };
   if (mgdl <= cfg.glucose_low || mgdl >= cfg.glucose_high)
-    return dma_->color565(255, 34,  0);   // red
+    return c565(cfg.color_low);
   if (mgdl <= cfg.glucose_warn_low || mgdl >= cfg.glucose_warn_high)
-    return dma_->color565(255, 204, 0);   // yellow
-  return dma_->color565(0, 204, 68);      // green
+    return c565(cfg.color_warn);
+  return c565(cfg.color_ok);
 }
 
 // ── Draw sub-methods ──────────────────────────────────────────────────────────
@@ -135,7 +138,8 @@ void DisplayRenderer::draw_trend_arrow_(int trend_code, uint16_t color) {
   dma_->drawLine(shaft.x2, shaft.y2, hx2, hy2, color);
 }
 
-void DisplayRenderer::draw_age_(time_t timestamp) {
+void DisplayRenderer::draw_age_(time_t timestamp, const DashConfig &cfg) {
+  if (!cfg.show_age) return;
   dma_->setTextSize(1);
   dma_->setTextColor(dma_->color565(160, 160, 160));
   dma_->setCursor(71, 3);
@@ -160,6 +164,7 @@ void DisplayRenderer::draw_age_(time_t timestamp) {
 }
 
 void DisplayRenderer::draw_status_label_(int mgdl, const DashConfig &cfg) {
+  if (!cfg.show_status_label) return;
   dma_->setTextSize(1);
   dma_->setCursor(71, 13);
 
@@ -181,39 +186,48 @@ void DisplayRenderer::draw_status_label_(int mgdl, const DashConfig &cfg) {
 
 void DisplayRenderer::draw_sparkline_(const std::vector<int> &spark,
                                       const DashConfig &cfg) {
-  if (spark.empty()) return;
+  if (!cfg.show_sparkline || spark.empty()) return;
 
-  constexpr int X0     = 88;   // left edge of sparkline zone
-  constexpr int Y0     = 2;    // top of zone
-  constexpr int HEIGHT = 20;   // total height in pixels
-  constexpr int WIDTH  = 40;   // total width in pixels
-  constexpr int BAR_W  = 3;    // each bar is 3 px wide
+  constexpr int X0     = 88;
+  constexpr int Y0     = 2;
+  constexpr int HEIGHT = 20;
+  constexpr int WIDTH  = 40;
+  constexpr int BAR_W  = 3;
 
-  uint16_t gray = dma_->color565(40, 40, 40);
-
-  // Faint threshold guidelines.
-  auto y_for = [&](int mgdl) -> int {
-    int clamped = constrain(mgdl, 40, 400);
-    return Y0 + HEIGHT - 1 - map(clamped, 40, 400, 0, HEIGHT - 1);
-  };
-  int y_warn_lo = y_for(cfg.glucose_warn_low);
-  int y_warn_hi = y_for(cfg.glucose_warn_high);
-  for (int x = X0; x < X0 + WIDTH; x++) {
-    dma_->drawPixel(x, y_warn_lo, gray);
-    dma_->drawPixel(x, y_warn_hi, gray);
-  }
-
-  // Bars — up to 12 readings fit in 40 px at 3 px/bar (with 4 px slack).
   size_t count   = min(spark.size(), static_cast<size_t>(WIDTH / BAR_W));
   size_t start_i = spark.size() > count ? spark.size() - count : 0;
 
+  // Auto-range: fit y-axis to visible readings with some padding.
+  int spark_lo = 40, spark_hi = 400;
+  if (cfg.sparkline_auto && count > 0) {
+    int mn = spark[start_i], mx = spark[start_i];
+    for (size_t i = start_i + 1; i < start_i + count; i++) {
+      if (spark[i] < mn) mn = spark[i];
+      if (spark[i] > mx) mx = spark[i];
+    }
+    int rng = max(20, mx - mn);
+    int pad = max(5, rng / 5);
+    spark_lo = max(40,  mn - pad);
+    spark_hi = min(400, mx + pad);
+  }
+
+  uint16_t gray = dma_->color565(40, 40, 40);
+  auto y_for = [&](int mgdl) -> int {
+    int clamped = constrain(mgdl, spark_lo, spark_hi);
+    return Y0 + HEIGHT - 1 - map(clamped, spark_lo, spark_hi, 0, HEIGHT - 1);
+  };
+  for (int x = X0; x < X0 + WIDTH; x++) {
+    dma_->drawPixel(x, y_for(cfg.glucose_warn_low),  gray);
+    dma_->drawPixel(x, y_for(cfg.glucose_warn_high), gray);
+  }
+
   for (size_t i = 0; i < count; i++) {
-    int mgdl    = spark[start_i + i];
-    int bar_h   = max(1, (int)map(constrain(mgdl, 40, 400), 40, 400, 1, HEIGHT));
-    int bx      = X0 + static_cast<int>(i) * BAR_W;
-    int by      = Y0 + HEIGHT - bar_h;
-    uint16_t c  = value_color_(mgdl, cfg);
-    dma_->fillRect(bx, by, BAR_W - 1, bar_h, c);
+    int mgdl  = spark[start_i + i];
+    int bar_h = max(1, (int)map(constrain(mgdl, spark_lo, spark_hi),
+                                spark_lo, spark_hi, 1, HEIGHT));
+    int bx    = X0 + static_cast<int>(i) * BAR_W;
+    int by    = Y0 + HEIGHT - bar_h;
+    dma_->fillRect(bx, by, BAR_W - 1, bar_h, value_color_(mgdl, cfg));
   }
 }
 
@@ -224,69 +238,97 @@ static inline float px_hash(int x, int row, int t_slot) {
   return (n & 0xFFFF) / 65535.0f;   // 0..1
 }
 
-// Blue ocean wave strip — each row gets a distinct wave so they don't look like
-// a single band. Four overlapping sine waves at irrational ratios break up the
-// regularity; a slow noise flutter adds the final organic wobble.
-void DisplayRenderer::draw_status_bar_(uint16_t /*color*/) {
-  unsigned long t   = millis();
-  int           t4  = (int)(t >> 6);   // noise bucket changes every ~64 ms
+// Ten-row ocean wave — asymmetric brightness model: dark sky above crest,
+// bright surface, gradually darkening water depth. Wave surface position
+// oscillates per column using four incommensurate sine waves + noise.
+void DisplayRenderer::draw_status_bar_(uint16_t solid_color, const DashConfig &cfg) {
+  constexpr int WAVE_Y = 22;
+  constexpr int WAVE_H = 10;
 
-  for (int row = 0; row < 2; row++) {
-    float roff = row * 1.618f;   // golden-ratio phase shift between rows
+  if (cfg.status_bar_style == 2) return;  // off
 
-    for (int x = 0; x < 128; x++) {
-      float ft = t * 0.001f;
+  if (cfg.status_bar_style == 1) {
+    for (int row = 0; row < WAVE_H; row++)
+      dma_->drawFastHLine(0, WAVE_Y + row, 128, solid_color);
+    return;
+  }
 
-      // Four waves at incommensurate frequencies — adds up to a lumpy envelope.
-      float w = sinf(x * 0.130f - ft * 3.00f + roff)
-              + sinf(x * 0.071f + ft * 2.10f - roff * 1.3f) * 0.55f
-              + sinf(x * 0.211f - ft * 3.30f + roff * 0.7f) * 0.35f
-              + sinf(x * 0.047f + ft * 1.40f - roff * 0.5f) * 0.25f;
-      w /= 2.15f;   // roughly −1..1
+  unsigned long t  = millis();
+  int           t4 = (int)(t >> 6);
+  float speed = (cfg.wave_speed == 0) ? 0.5f : (cfg.wave_speed == 2) ? 2.0f : 1.0f;
 
-      // Gentle noise flutter (low amplitude so it's texture not noise).
-      float noise = (px_hash(x, row, t4) - 0.5f) * 0.18f;
-      w = w * 0.75f + noise;   // blend: mostly wave, tiny noise
+  uint8_t wr = (cfg.color_wave >> 16) & 0xFF;
+  uint8_t wg = (cfg.color_wave >> 8)  & 0xFF;
+  uint8_t wb =  cfg.color_wave        & 0xFF;
 
-      // Map to subtle brightness range — keep it dim enough to be a trim.
-      float bright = 0.30f + 0.20f * w;   // 0.10 .. 0.50
+  for (int x = 0; x < 128; x++) {
+    float ft = t * 0.001f * speed;
+    float wave = sinf(x * 0.130f - ft * 3.00f)
+               + sinf(x * 0.071f + ft * 2.10f) * 0.55f
+               + sinf(x * 0.211f - ft * 3.30f) * 0.35f
+               + sinf(x * 0.047f + ft * 1.40f) * 0.25f;
+    wave /= 2.15f;   // ~−1..1
+    float surface = 2.5f + 1.5f * wave;  // oscillates ~1.0..4.0 from top of strip
 
-      // Ocean blue: deep→bright blue tones, slight cyan in front row.
-      uint8_t r_out = (uint8_t)(  0.0f * bright);
-      uint8_t g_out = (uint8_t)( (row == 0 ? 55.0f : 35.0f) * bright);
-      uint8_t b_out = (uint8_t)(210.0f * bright + 20.0f);
+    for (int row = 0; row < WAVE_H; row++) {
+      float d = (float)row - surface;  // d<0 = sky (above), d>=0 = water (below)
 
-      dma_->drawPixel(x, 22 + row, dma_->color565(r_out, g_out, b_out));
+      float bright;
+      if (d < 0.0f) {
+        // Sky: exponential glow near surface, dark above.
+        bright = 0.03f + 0.25f * expf(d * 2.5f);
+      } else {
+        // Water: bright at crest, darkens with depth.
+        bright = 0.12f + 0.58f * expf(-d * 0.55f);
+      }
+
+      // Noise flutter, strongest near the surface.
+      float nd = fabsf(d);
+      if (nd < 2.5f) bright += (px_hash(x, row, t4) - 0.5f) * 0.12f * (1.0f - nd * 0.4f);
+      if (bright < 0.0f) bright = 0.0f;
+      if (bright > 1.0f) bright = 1.0f;
+
+      uint8_t r_out = (uint8_t)(wr * bright);
+      uint8_t g_out = (uint8_t)(wg * bright);
+      // Constant blue floor keeps deep water from going pure black.
+      float b_raw = wb * bright + 18.0f * (1.0f - bright);
+      uint8_t b_out = (b_raw > 255.0f) ? 255 : (uint8_t)b_raw;
+
+      dma_->drawPixel(x, WAVE_Y + row, dma_->color565(r_out, g_out, b_out));
     }
   }
 }
 
-void DisplayRenderer::draw_bottom_msg_(const CGMData &data) {
+void DisplayRenderer::draw_bottom_msg_(const CGMData &data, const DashConfig &cfg) {
   dma_->setTextSize(1);
   dma_->setCursor(2, 24);
 
   if (!data.valid) {
-    dma_->setTextColor(dma_->color565(255, 34, 0));
+    dma_->setTextColor(dma_->color565(255, 80, 60));
     dma_->print(data.error.isEmpty() ? "NO DATA" : data.error.substring(0, 20));
     return;
   }
   if (data.error == "STALE") {
-    dma_->setTextColor(dma_->color565(140, 140, 140));
+    dma_->setTextColor(dma_->color565(200, 200, 200));
     dma_->print("STALE");
     return;
   }
 
-  // Normal operation — show current time.
   time_t now = time(nullptr);
   if (now <= 0) return;
   struct tm t;
   localtime_r(&now, &t);
-  int hour = t.tm_hour % 12;
-  if (hour == 0) hour = 12;
   char buf[9];
-  snprintf(buf, sizeof(buf), "%d:%02d %s", hour, t.tm_min,
-           t.tm_hour < 12 ? "AM" : "PM");
-  dma_->setTextColor(dma_->color565(80, 80, 80));
+  if (cfg.clock_24h) {
+    snprintf(buf, sizeof(buf), "%02d:%02d", t.tm_hour, t.tm_min);
+  } else {
+    int hour = t.tm_hour % 12;
+    if (hour == 0) hour = 12;
+    snprintf(buf, sizeof(buf), "%d:%02d %s", hour, t.tm_min,
+             t.tm_hour < 12 ? "AM" : "PM");
+  }
+  // Bright white so the clock reads clearly over the wave background.
+  dma_->setTextColor(dma_->color565(220, 220, 220));
   dma_->print(buf);
 }
 
@@ -297,9 +339,11 @@ void DisplayRenderer::draw(const CGMData &data, const DashConfig &cfg) {
   dma_->fillScreen(dma_->color565(0, 0, 0));
 
   if (!data.valid) {
-    // Show error state — red status bar and message only.
-    draw_status_bar_(dma_->color565(255, 34, 0));
-    draw_bottom_msg_(data);
+    uint16_t alert_c = dma_->color565((cfg.color_low >> 16) & 0xFF,
+                                      (cfg.color_low >>  8) & 0xFF,
+                                       cfg.color_low        & 0xFF);
+    draw_status_bar_(alert_c, cfg);
+    draw_bottom_msg_(data, cfg);
     dma_->flipDMABuffer();
     return;
   }
@@ -307,12 +351,18 @@ void DisplayRenderer::draw(const CGMData &data, const DashConfig &cfg) {
   int      mgdl  = data.current.value_mgdl;
   uint16_t color = value_color_(mgdl, cfg);
 
-  // Alert pulse: smooth 1 Hz sine wave between 50% and 100% brightness.
   bool alert = (mgdl <= cfg.glucose_low || mgdl >= cfg.glucose_high);
   if (alert) {
-    float pulse = 0.75f + 0.25f * sinf(millis() * 0.006283f);  // 0.5–1.0
+    // Configurable pulse: speed (0=0.5Hz, 1=1Hz, 2=2Hz) and minimum brightness.
+    float freq  = (cfg.pulse_speed == 0) ? 0.003142f
+                : (cfg.pulse_speed == 2) ? 0.012566f
+                :                          0.006283f;
+    float min_f = cfg.pulse_min / 100.0f;
+    float mid   = (1.0f + min_f) * 0.5f;
+    float amp   = (1.0f - min_f) * 0.5f;
+    float pulse = mid + amp * sinf(millis() * freq);
     uint8_t r = (uint8_t)(((color >> 11) & 0x1F) * 8 * pulse);
-    uint8_t g = (uint8_t)(((color >> 5)  & 0x3F) * 4 * pulse);
+    uint8_t g = (uint8_t)(((color >>  5) & 0x3F) * 4 * pulse);
     uint8_t b = (uint8_t)(( color        & 0x1F) * 8 * pulse);
     draw_glucose_(mgdl, dma_->color565(r, g, b));
   } else {
@@ -320,11 +370,11 @@ void DisplayRenderer::draw(const CGMData &data, const DashConfig &cfg) {
   }
 
   draw_trend_arrow_(data.current.trend_code, color);
-  draw_age_(data.current.timestamp);
+  draw_age_(data.current.timestamp, cfg);
   draw_status_label_(mgdl, cfg);
   draw_sparkline_(data.sparkline, cfg);
-  draw_status_bar_(color);
-  draw_bottom_msg_(data);
+  draw_status_bar_(color, cfg);
+  draw_bottom_msg_(data, cfg);
 
   dma_->flipDMABuffer();
 }

@@ -132,6 +132,104 @@
       </div>
     </section>
 
+    <section>
+      <h2>Style</h2>
+      <label>
+        Clock format
+        <select name="clock_24h">
+          <option value="false">12-hour (AM/PM)</option>
+          <option value="true">24-hour</option>
+        </select>
+      </label>
+      <label>
+        Status bar
+        <select name="status_bar_style" id="bar-style-select">
+          <option value="0">Animated wave</option>
+          <option value="1">Solid color</option>
+          <option value="2">Off</option>
+        </select>
+      </label>
+      <label id="wave-speed-row">
+        Wave speed
+        <select name="wave_speed">
+          <option value="0">Slow</option>
+          <option value="1">Normal</option>
+          <option value="2">Fast</option>
+        </select>
+      </label>
+      <label>
+        Alert pulse speed
+        <select name="pulse_speed">
+          <option value="0">Slow (0.5 Hz)</option>
+          <option value="1">Normal (1 Hz)</option>
+          <option value="2">Fast (2 Hz)</option>
+        </select>
+      </label>
+      <label>
+        Alert pulse minimum brightness (%)
+        <input name="pulse_min" type="number" min="0" max="90" step="5">
+      </label>
+      <label>
+        Sparkline
+        <select name="show_sparkline">
+          <option value="true">Show</option>
+          <option value="false">Hide</option>
+        </select>
+      </label>
+      <label>
+        Sparkline range
+        <select name="sparkline_auto">
+          <option value="false">Fixed (40–400 mg/dL)</option>
+          <option value="true">Auto-fit</option>
+        </select>
+      </label>
+      <label>
+        Reading age indicator
+        <select name="show_age">
+          <option value="true">Show</option>
+          <option value="false">Hide</option>
+        </select>
+      </label>
+      <label>
+        Status label (HI / LO)
+        <select name="show_status_label">
+          <option value="true">Show</option>
+          <option value="false">Hide</option>
+        </select>
+      </label>
+      <label>
+        Auto-rotate with gyro
+        <select name="auto_rotate">
+          <option value="true">Enabled</option>
+          <option value="false">Disabled</option>
+        </select>
+      </label>
+    </section>
+
+    <section>
+      <h2>Colors</h2>
+      <div class="row">
+        <label>
+          Alert (low / high)
+          <input name="color_low" type="color">
+        </label>
+        <label>
+          Warning threshold
+          <input name="color_warn" type="color">
+        </label>
+      </div>
+      <div class="row">
+        <label>
+          In-range
+          <input name="color_ok" type="color">
+        </label>
+        <label>
+          Wave base color
+          <input name="color_wave" type="color">
+        </label>
+      </div>
+    </section>
+
     <button type="submit">Save &amp; Restart</button>
   </form>
 
@@ -143,6 +241,7 @@
   <script>
     const status = document.getElementById('status');
     const sourceSelect = document.getElementById('cgm-source-select');
+    const barStyleSelect = document.getElementById('bar-style-select');
 
     function setStatus(msg, isError) {
       status.textContent = msg;
@@ -154,7 +253,12 @@
       document.getElementById('nightscout-section').style.display = val === '1' ? '' : 'none';
     }
 
+    function applyBarStyleVisibility(val) {
+      document.getElementById('wave-speed-row').style.display = val === '0' ? '' : 'none';
+    }
+
     sourceSelect.addEventListener('change', e => applySourceVisibility(e.target.value));
+    barStyleSelect.addEventListener('change', e => applyBarStyleVisibility(e.target.value));
 
     // Populate form with current config on load (passwords excluded).
     fetch('/config')
@@ -165,20 +269,25 @@
           if (el) el.value = val;
         }
         applySourceVisibility(String(cfg.cgm_source ?? 0));
+        applyBarStyleVisibility(String(cfg.status_bar_style ?? 0));
       })
       .catch(() => setStatus('Could not load current config.', true));
+
+    const INT_FIELDS  = ['glucose_low','glucose_high','glucose_warn_low','glucose_warn_high',
+                         'cgm_source','pulse_speed','pulse_min','wave_speed','status_bar_style'];
+    const BOOL_FIELDS = ['dexcom_region_us','unit_mgdl','clock_24h','show_sparkline',
+                         'sparkline_auto','show_age','auto_rotate','show_status_label'];
 
     document.getElementById('form').addEventListener('submit', e => {
       e.preventDefault();
       const data = {};
       new FormData(e.target).forEach((val, key) => {
-        if (['glucose_low','glucose_high','glucose_warn_low','glucose_warn_high',
-             'cgm_source'].includes(key)) {
+        if (INT_FIELDS.includes(key)) {
           data[key] = parseInt(val, 10);
-        } else if (['dexcom_region_us', 'unit_mgdl'].includes(key)) {
+        } else if (BOOL_FIELDS.includes(key)) {
           data[key] = val === 'true';
         } else {
-          data[key] = val;
+          data[key] = val;  // strings and color hex values pass through as-is
         }
       });
 

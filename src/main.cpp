@@ -1,5 +1,8 @@
 #include <Arduino.h>
 #include <WiFi.h>
+#include <Wire.h>
+#include <Adafruit_LIS3DH.h>
+#include <Adafruit_Sensor.h>
 #include "config_store.h"
 #include "dexcom_source.h"
 #include "nightscout_source.h"
@@ -27,9 +30,13 @@ static bool           should_restart = false;
 static unsigned long  last_fetch_ms  = 0;
 static unsigned long  last_draw_ms   = 0;
 
-static constexpr unsigned long POLL_INTERVAL_MS = 60000UL;  // 1 minute
-static constexpr unsigned long DRAW_INTERVAL_MS = 500UL;    // 2× per second (blink)
+static constexpr unsigned long POLL_INTERVAL_MS = 60000UL;
+static constexpr unsigned long DRAW_INTERVAL_MS = 50UL;     // 20 fps — smooth wave animation
 static constexpr unsigned long WIFI_TIMEOUT_MS  = 15000UL;
+
+static Adafruit_LIS3DH lis_;
+static bool            lis_ok_        = false;
+static unsigned long   last_btn_ms_   = 0;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -70,7 +77,17 @@ void setup() {
   renderer.begin();
   renderer.show_message("Starting...");
 
+  // Buttons — active LOW with internal pull-up.
+  pinMode(PIN_BUTTON_UP,   INPUT_PULLUP);
+  pinMode(PIN_BUTTON_DOWN, INPUT_PULLUP);
+
+  // Accelerometer (LIS3DH at 0x19 on the Matrix Portal S3).
+  Wire.begin();
+  lis_ok_ = lis_.begin(0x19);
+  if (!lis_ok_) Serial.println("[Main] LIS3DH not found — rotation disabled");
+
   bool has_wifi = config_store.load(config);
+  renderer.set_brightness(config.brightness);
 
   if (!has_wifi || config.wifi_ssid.isEmpty()) {
     start_ap_mode();
@@ -136,7 +153,28 @@ void loop() {
 
   unsigned long now = millis();
 
-  // Redraw every DRAW_INTERVAL_MS so the 1 Hz blink animation works.
+  // ── Brightness buttons (work in all states) ───────────────────────────────
+  if (now - last_btn_ms_ > 200) {
+    bool up   = digitalRead(PIN_BUTTON_UP)   == LOW;
+    bool down = digitalRead(PIN_BUTTON_DOWN) == LOW;
+    if (up || down) {
+      int b = config.brightness + (up ? 25 : -25);
+      config.brightness = (uint8_t)constrain(b, 10, 255);
+      renderer.set_brightness(config.brightness);
+      config_store.save(config);
+      last_btn_ms_ = now;
+    }
+  }
+
+  // ── Accelerometer orientation ─────────────────────────────────────────────
+  if (lis_ok_) {
+    sensors_event_t evt;
+    lis_.getEvent(&evt);
+    // Y > 1 m/s² means gravity is pulling "up" relative to the board — flipped.
+    renderer.set_flipped(evt.acceleration.y > 1.0f);
+  }
+
+  // Redraw every DRAW_INTERVAL_MS for wave animation and blink.
   if (now - last_draw_ms >= DRAW_INTERVAL_MS) {
     renderer.draw(cgm_data, config);
     last_draw_ms = now;

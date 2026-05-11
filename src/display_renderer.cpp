@@ -1,6 +1,7 @@
 #include "display_renderer.h"
 #include <Arduino.h>
 #include <time.h>
+#include <math.h>
 
 // ── Pin mapping: Matrix Portal S3 + Waveshare 64×32 (G/B channels swapped) ──
 static const HUB75_I2S_CFG::i2s_pins MATRIX_PINS = {
@@ -48,6 +49,7 @@ void DisplayRenderer::fill_black() {
 }
 
 void DisplayRenderer::show_message(const char *line1, const char *line2) {
+  dma_->setRotation(flipped_ ? 2 : 0);
   dma_->fillScreen(dma_->color565(0, 0, 0));
   dma_->setTextSize(1);
   dma_->setTextColor(dma_->color565(255, 255, 255));
@@ -215,8 +217,23 @@ void DisplayRenderer::draw_sparkline_(const std::vector<int> &spark,
   }
 }
 
+// Animated wave strip — two interfering sine waves give an organic ocean feel.
+// The color stays the status color (green/yellow/red); brightness ripples across.
 void DisplayRenderer::draw_status_bar_(uint16_t color) {
-  dma_->fillRect(0, 22, 128, 2, color);
+  unsigned long t = millis();
+  uint8_t r = ((color >> 11) & 0x1F) << 3;
+  uint8_t g = ((color >> 5)  & 0x3F) << 2;
+  uint8_t b = ( color        & 0x1F) << 3;
+
+  for (int x = 0; x < 128; x++) {
+    float w = 0.35f
+      + 0.40f * (0.5f + 0.5f * sinf(x * 0.17f - t * 0.004f))
+      + 0.25f * (0.5f + 0.5f * sinf(x * 0.07f + t * 0.0025f));
+    uint16_t px = dma_->color565(
+      (uint8_t)(r * w), (uint8_t)(g * w), (uint8_t)(b * w));
+    dma_->drawPixel(x, 22, px);
+    dma_->drawPixel(x, 23, px);
+  }
 }
 
 void DisplayRenderer::draw_bottom_msg_(const CGMData &data) {
@@ -251,6 +268,7 @@ void DisplayRenderer::draw_bottom_msg_(const CGMData &data) {
 // ── Main draw entry point ─────────────────────────────────────────────────────
 
 void DisplayRenderer::draw(const CGMData &data, const DashConfig &cfg) {
+  dma_->setRotation(flipped_ ? 2 : 0);
   dma_->fillScreen(dma_->color565(0, 0, 0));
 
   if (!data.valid) {

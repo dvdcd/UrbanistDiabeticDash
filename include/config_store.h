@@ -16,6 +16,7 @@ struct DashConfig {
   String    nightscout_secret; // raw API secret (stored in NVS, never returned by GET /config)
   // Time
   String    timezone           = "UTC0";  // POSIX TZ string
+  uint8_t   brightness         = 200;
   // Display
   int       glucose_low        = 70;
   int       glucose_high       = 180;

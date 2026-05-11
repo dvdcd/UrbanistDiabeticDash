@@ -31,6 +31,8 @@ bool ConfigStore::load(DashConfig &out) {
   out.show_age          = prefs.getBool(  "show_age",   true);
   out.auto_rotate       = prefs.getBool(  "auto_rot",   true);
   out.show_status_label = prefs.getBool(  "show_lbl",   true);
+  out.show_stars        = prefs.getBool(  "stars",      true);
+  out.show_seafoam      = prefs.getBool(  "seafoam",    true);
   out.color_low         = prefs.getUInt(  "clr_low",    0xFF2200);
   out.color_warn        = prefs.getUInt(  "clr_warn",   0xFFCC00);
   out.color_ok          = prefs.getUInt(  "clr_ok",     0x00CC44);
@@ -67,6 +69,8 @@ void ConfigStore::save(const DashConfig &c) {
   prefs.putBool(  "show_age",    c.show_age);
   prefs.putBool(  "auto_rot",    c.auto_rotate);
   prefs.putBool(  "show_lbl",    c.show_status_label);
+  prefs.putBool(  "stars",       c.show_stars);
+  prefs.putBool(  "seafoam",     c.show_seafoam);
   prefs.putUInt(  "clr_low",     c.color_low);
   prefs.putUInt(  "clr_warn",    c.color_warn);
   prefs.putUInt(  "clr_ok",      c.color_ok);

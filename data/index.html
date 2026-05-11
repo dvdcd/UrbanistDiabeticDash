@@ -204,6 +204,20 @@
           <option value="false">Disabled</option>
         </select>
       </label>
+      <label>
+        Twinkling stars
+        <select name="show_stars">
+          <option value="true">On</option>
+          <option value="false">Off</option>
+        </select>
+      </label>
+      <label>
+        Wave seafoam
+        <select name="show_seafoam">
+          <option value="true">On</option>
+          <option value="false">Off</option>
+        </select>
+      </label>
     </section>
 
     <section>
@@ -276,7 +290,8 @@
     const INT_FIELDS  = ['glucose_low','glucose_high','glucose_warn_low','glucose_warn_high',
                          'cgm_source','pulse_speed','pulse_min','wave_speed','status_bar_style'];
     const BOOL_FIELDS = ['dexcom_region_us','unit_mgdl','clock_24h','show_sparkline',
-                         'sparkline_auto','show_age','auto_rotate','show_status_label'];
+                         'sparkline_auto','show_age','auto_rotate','show_status_label',
+                         'show_stars','show_seafoam'];
 
     document.getElementById('form').addEventListener('submit', e => {
       e.preventDefault();

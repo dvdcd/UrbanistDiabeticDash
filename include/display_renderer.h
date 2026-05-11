@@ -17,6 +17,7 @@ class DisplayRenderer {
   MatrixPanel_I2S_DMA *panel() { return dma_; }
 
  private:
+  void draw_sparkles_(const DashConfig &cfg);
   void draw_glucose_(int value_mgdl, uint16_t color);
   void draw_trend_arrow_(int trend_code, uint16_t color);
   void draw_age_(time_t timestamp, const DashConfig &cfg);

@@ -49,6 +49,8 @@ void DashWebServer::begin() {
     doc["show_age"]           = cfg.show_age;
     doc["auto_rotate"]        = cfg.auto_rotate;
     doc["show_status_label"]  = cfg.show_status_label;
+    doc["show_stars"]         = cfg.show_stars;
+    doc["show_seafoam"]       = cfg.show_seafoam;
     // Colors as #rrggbb hex strings (safe for HTML color inputs).
     char cbuf[8];
     snprintf(cbuf, sizeof(cbuf), "#%06lx", (unsigned long)cfg.color_low);
@@ -136,6 +138,10 @@ void DashWebServer::begin() {
         cfg.auto_rotate         = doc["auto_rotate"].as<bool>();
       if (doc["show_status_label"].is<bool>())
         cfg.show_status_label   = doc["show_status_label"].as<bool>();
+      if (doc["show_stars"].is<bool>())
+        cfg.show_stars          = doc["show_stars"].as<bool>();
+      if (doc["show_seafoam"].is<bool>())
+        cfg.show_seafoam        = doc["show_seafoam"].as<bool>();
       // Colors — client sends "#rrggbb"; convert to packed uint32_t.
       auto parse_hex_color = [](const String &s) -> uint32_t {
         String h = s.startsWith("#") ? s.substring(1) : s;

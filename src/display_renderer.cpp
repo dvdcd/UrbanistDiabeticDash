@@ -3,6 +3,8 @@
 #include <time.h>
 #include <math.h>
 
+static inline float px_hash(int x, int row, int t_slot);
+
 // ── Pin mapping: Matrix Portal S3 + Waveshare 64×32 (G/B channels swapped) ──
 static const HUB75_I2S_CFG::i2s_pins MATRIX_PINS = {
   /*.r1 =*/ 42,
@@ -76,6 +78,30 @@ uint16_t DisplayRenderer::value_color_(int mgdl, const DashConfig &cfg) const {
 }
 
 // ── Draw sub-methods ──────────────────────────────────────────────────────────
+
+// Scatter ~20 twinkling star pixels across the dark content background.
+// Positions shift every 3 s; each star has its own sine phase and speed so
+// they twinkle independently. Draw BEFORE all content — content overwrites
+// stars that land under it, leaving them visible only in empty space.
+void DisplayRenderer::draw_sparkles_(const DashConfig &cfg) {
+  if (!cfg.show_stars) return;
+
+  unsigned long t     = millis();
+  int           t_pos = (int)(t / 3000);   // position slot, shifts every 3 s
+
+  for (int y = 1; y < 22; y++) {
+    for (int x = 0; x < 128; x++) {
+      // ~0.8 % of positions are active → ~21 stars in the 128×21 area.
+      if (px_hash(x, y, t_pos) < 0.008f) {
+        float freq  = 0.0020f + px_hash(x, y, t_pos + 700) * 0.006f; // 0.8–3.1 s period
+        float phase = px_hash(x, y, t_pos + 300) * 6.2832f;
+        float bright = 0.25f + 0.75f * (sinf(t * freq + phase) * 0.5f + 0.5f);
+        uint8_t v = (uint8_t)(bright * 230);
+        dma_->drawPixel(x, y, dma_->color565(v, v, v));
+      }
+    }
+  }
+}
 
 void DisplayRenderer::draw_glucose_(int value_mgdl, uint16_t color) {
   dma_->setTextSize(2);
@@ -294,6 +320,18 @@ void DisplayRenderer::draw_status_bar_(uint16_t solid_color, const DashConfig &c
       float b_raw = wb * bright + 18.0f * (1.0f - bright);
       uint8_t b_out = (b_raw > 255.0f) ? 255 : (uint8_t)b_raw;
 
+      // Seafoam: bright whitecaps flash at the wave crest (~15 % of columns).
+      // Uses a 256 ms time bucket so each cap persists briefly before fading.
+      if (cfg.show_seafoam && row == (int)surface) {
+        float foam = px_hash(x, 88, (int)(t >> 8));
+        if (foam > 0.85f) {
+          float fi = (foam - 0.85f) / 0.15f;   // 0..1
+          r_out = (uint8_t)min(255, r_out + (int)(200 * fi));
+          g_out = (uint8_t)min(255, g_out + (int)(210 * fi));
+          b_out = (uint8_t)min(255, b_out + (int)(100 * fi));
+        }
+      }
+
       dma_->drawPixel(x, WAVE_Y + row, dma_->color565(r_out, g_out, b_out));
     }
   }
@@ -337,6 +375,7 @@ void DisplayRenderer::draw_bottom_msg_(const CGMData &data, const DashConfig &cf
 void DisplayRenderer::draw(const CGMData &data, const DashConfig &cfg) {
   dma_->setRotation(flipped_ ? 2 : 0);
   dma_->fillScreen(dma_->color565(0, 0, 0));
+  draw_sparkles_(cfg);   // background stars — drawn first so content overwrites
 
   if (!data.valid) {
     uint16_t alert_c = dma_->color565((cfg.color_low >> 16) & 0xFF,

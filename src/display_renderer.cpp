@@ -307,12 +307,15 @@ void DisplayRenderer::draw(const CGMData &data, const DashConfig &cfg) {
   int      mgdl  = data.current.value_mgdl;
   uint16_t color = value_color_(mgdl, cfg);
 
-  // Alert blink: 1 Hz, implemented by blanking the glucose value every other
-  // 500 ms draw call when the value is outside the hard thresholds.
+  // Alert pulse: smooth 1 Hz sine wave between 50% and 100% brightness.
   bool alert = (mgdl <= cfg.glucose_low || mgdl >= cfg.glucose_high);
-  bool blink_off = alert && ((millis() / 500) % 2 == 0);
-
-  if (!blink_off) {
+  if (alert) {
+    float pulse = 0.75f + 0.25f * sinf(millis() * 0.006283f);  // 0.5–1.0
+    uint8_t r = (uint8_t)(((color >> 11) & 0x1F) * 8 * pulse);
+    uint8_t g = (uint8_t)(((color >> 5)  & 0x3F) * 4 * pulse);
+    uint8_t b = (uint8_t)(( color        & 0x1F) * 8 * pulse);
+    draw_glucose_(mgdl, dma_->color565(r, g, b));
+  } else {
     draw_glucose_(mgdl, color);
   }
 

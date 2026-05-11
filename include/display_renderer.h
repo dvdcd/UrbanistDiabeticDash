@@ -17,13 +17,14 @@ class DisplayRenderer {
   MatrixPanel_I2S_DMA *panel() { return dma_; }
 
  private:
+  void draw_sparkles_(const DashConfig &cfg);
   void draw_glucose_(int value_mgdl, uint16_t color);
   void draw_trend_arrow_(int trend_code, uint16_t color);
-  void draw_age_(time_t timestamp);
+  void draw_age_(time_t timestamp, const DashConfig &cfg);
   void draw_status_label_(int value_mgdl, const DashConfig &cfg);
   void draw_sparkline_(const std::vector<int> &spark, const DashConfig &cfg);
-  void draw_status_bar_(uint16_t color);
-  void draw_bottom_msg_(const CGMData &data);
+  void draw_status_bar_(uint16_t color, const DashConfig &cfg);
+  void draw_bottom_msg_(const CGMData &data, const DashConfig &cfg);
 
   uint16_t value_color_(int mgdl, const DashConfig &cfg) const;
 

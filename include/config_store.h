@@ -23,6 +23,24 @@ struct DashConfig {
   int       glucose_warn_low   = 80;
   int       glucose_warn_high  = 160;
   bool      unit_mgdl          = true;
+  // Style
+  bool      clock_24h          = false;
+  int       pulse_speed        = 1;     // 0=slow(0.5Hz), 1=normal(1Hz), 2=fast(2Hz)
+  int       pulse_min          = 50;    // minimum brightness % during alert pulse
+  int       wave_speed         = 1;     // 0=slow, 1=normal, 2=fast
+  int       status_bar_style   = 0;     // 0=wave, 1=solid, 2=off
+  bool      show_sparkline     = true;
+  bool      sparkline_auto     = false; // false=fixed 40-400, true=auto-range
+  bool      show_age           = true;
+  bool      auto_rotate        = true;
+  bool      show_status_label  = true;
+  bool      show_stars         = true;   // twinkle stars in background
+  bool      show_seafoam       = true;   // whitecaps on wave crest
+  // Colors (packed 0x00RRGGBB)
+  uint32_t  color_low          = 0xFF2200;  // low/high alert
+  uint32_t  color_warn         = 0xFFCC00;  // warning threshold
+  uint32_t  color_ok           = 0x00CC44;  // in-range
+  uint32_t  color_wave         = 0x0035D2;  // wave base color
 };
 
 class ConfigStore {

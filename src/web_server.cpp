@@ -38,6 +38,29 @@ void DashWebServer::begin() {
     doc["glucose_warn_high"]  = cfg.glucose_warn_high;
     doc["unit_mgdl"]          = cfg.unit_mgdl;
     doc["timezone"]           = cfg.timezone;
+    // Style
+    doc["clock_24h"]          = cfg.clock_24h;
+    doc["pulse_speed"]        = cfg.pulse_speed;
+    doc["pulse_min"]          = cfg.pulse_min;
+    doc["wave_speed"]         = cfg.wave_speed;
+    doc["status_bar_style"]   = cfg.status_bar_style;
+    doc["show_sparkline"]     = cfg.show_sparkline;
+    doc["sparkline_auto"]     = cfg.sparkline_auto;
+    doc["show_age"]           = cfg.show_age;
+    doc["auto_rotate"]        = cfg.auto_rotate;
+    doc["show_status_label"]  = cfg.show_status_label;
+    doc["show_stars"]         = cfg.show_stars;
+    doc["show_seafoam"]       = cfg.show_seafoam;
+    // Colors as #rrggbb hex strings (safe for HTML color inputs).
+    char cbuf[8];
+    snprintf(cbuf, sizeof(cbuf), "#%06lx", (unsigned long)cfg.color_low);
+    doc["color_low"]  = String(cbuf);
+    snprintf(cbuf, sizeof(cbuf), "#%06lx", (unsigned long)cfg.color_warn);
+    doc["color_warn"] = String(cbuf);
+    snprintf(cbuf, sizeof(cbuf), "#%06lx", (unsigned long)cfg.color_ok);
+    doc["color_ok"]   = String(cbuf);
+    snprintf(cbuf, sizeof(cbuf), "#%06lx", (unsigned long)cfg.color_wave);
+    doc["color_wave"] = String(cbuf);
 
     String json;
     serializeJson(doc, json);
@@ -94,6 +117,44 @@ void DashWebServer::begin() {
       if (doc["timezone"].is<String>() &&
           doc["timezone"].as<String>().length() > 0)
         cfg.timezone            = doc["timezone"].as<String>();
+      // Style
+      if (doc["clock_24h"].is<bool>())
+        cfg.clock_24h           = doc["clock_24h"].as<bool>();
+      if (doc["pulse_speed"].is<int>())
+        cfg.pulse_speed         = doc["pulse_speed"].as<int>();
+      if (doc["pulse_min"].is<int>())
+        cfg.pulse_min           = doc["pulse_min"].as<int>();
+      if (doc["wave_speed"].is<int>())
+        cfg.wave_speed          = doc["wave_speed"].as<int>();
+      if (doc["status_bar_style"].is<int>())
+        cfg.status_bar_style    = doc["status_bar_style"].as<int>();
+      if (doc["show_sparkline"].is<bool>())
+        cfg.show_sparkline      = doc["show_sparkline"].as<bool>();
+      if (doc["sparkline_auto"].is<bool>())
+        cfg.sparkline_auto      = doc["sparkline_auto"].as<bool>();
+      if (doc["show_age"].is<bool>())
+        cfg.show_age            = doc["show_age"].as<bool>();
+      if (doc["auto_rotate"].is<bool>())
+        cfg.auto_rotate         = doc["auto_rotate"].as<bool>();
+      if (doc["show_status_label"].is<bool>())
+        cfg.show_status_label   = doc["show_status_label"].as<bool>();
+      if (doc["show_stars"].is<bool>())
+        cfg.show_stars          = doc["show_stars"].as<bool>();
+      if (doc["show_seafoam"].is<bool>())
+        cfg.show_seafoam        = doc["show_seafoam"].as<bool>();
+      // Colors — client sends "#rrggbb"; convert to packed uint32_t.
+      auto parse_hex_color = [](const String &s) -> uint32_t {
+        String h = s.startsWith("#") ? s.substring(1) : s;
+        return (uint32_t)strtoul(h.c_str(), nullptr, 16);
+      };
+      if (doc["color_low"].is<String>())
+        cfg.color_low           = parse_hex_color(doc["color_low"].as<String>());
+      if (doc["color_warn"].is<String>())
+        cfg.color_warn          = parse_hex_color(doc["color_warn"].as<String>());
+      if (doc["color_ok"].is<String>())
+        cfg.color_ok            = parse_hex_color(doc["color_ok"].as<String>());
+      if (doc["color_wave"].is<String>())
+        cfg.color_wave          = parse_hex_color(doc["color_wave"].as<String>());
 
       store_.save(cfg);
       req->send(200, "application/json", "{\"ok\":true}");
@@ -162,8 +223,10 @@ void DashWebServer::begin() {
   server_.on(
     "/update", HTTP_POST,
     [this](AsyncWebServerRequest *req) {
-      bool ok = !Update.hasError();
-      req->send(ok ? 200 : 500, "text/plain", ok ? "OK" : "FAILED");
+      // Request handler fires after ALL body chunks — safe to finalize here.
+      bool ok = !Update.hasError() && Update.end(true);
+      Serial.printf("[OTA] %s\n", ok ? "Done" : Update.errorString());
+      req->send(ok ? 200 : 500, "text/plain", ok ? "OK" : Update.errorString());
       if (ok && restart_cb_) restart_cb_();
     },
     nullptr,  // no multipart upload handler
@@ -172,19 +235,14 @@ void DashWebServer::begin() {
       if (index == 0) {
         Serial.printf("[OTA] Start: %u bytes\n", total);
         if (!Update.begin(total > 0 ? total : UPDATE_SIZE_UNKNOWN, U_FLASH)) {
-          Update.printError(Serial);
+          Serial.printf("[OTA] begin failed: %s\n", Update.errorString());
         }
       }
       if (!Update.hasError() && Update.write(data, len) != len) {
-        Update.printError(Serial);
+        Serial.printf("[OTA] write error at %u\n", index);
       }
-      if (index + len >= total) {
-        if (Update.end(true)) {
-          Serial.printf("[OTA] Done: %u bytes\n", index + len);
-        } else {
-          Update.printError(Serial);
-        }
-      }
+      // Do NOT call Update.end() here — request handler does it once,
+      // after all chunks. Calling end() mid-stream was corrupting the image.
     }
   );
 

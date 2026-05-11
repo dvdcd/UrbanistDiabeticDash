@@ -171,7 +171,7 @@ void loop() {
   }
 
   // ── Accelerometer orientation (2 s settle to avoid thrashing) ────────────
-  if (lis_ok_) {
+  if (lis_ok_ && config.auto_rotate) {
     sensors_event_t evt;
     lis_.getEvent(&evt);
     // Negative Y means gravity pulls toward the connector side — panel is upside down.

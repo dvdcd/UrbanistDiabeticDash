@@ -102,7 +102,9 @@ void DashWebServer::begin() {
     }
   );
 
-  // ── GET /update — firmware upload form ────────────────────────────────────
+  // ── GET /update — firmware upload page ────────────────────────────────────
+  // Uses JS fetch with application/octet-stream body — avoids multipart
+  // parsing issues with AsyncWebServer on large binaries.
   server_.on("/update", HTTP_GET, [](AsyncWebServerRequest *req) {
     req->send(200, "text/html",
       "<!DOCTYPE html><html><head><meta charset='UTF-8'>"
@@ -110,55 +112,75 @@ void DashWebServer::begin() {
       "<title>Firmware Update</title>"
       "<style>"
       "body{font-family:sans-serif;background:#111;color:#eee;max-width:420px;margin:40px auto;padding:20px}"
-      "h1{margin:0 0 4px}p{color:#aaa;margin:0 0 20px;font-size:.9em}"
+      "h1{margin:0 0 8px}p{color:#aaa;margin:0 0 16px;font-size:.9em}"
       "input,button{width:100%;padding:10px;margin:6px 0;box-sizing:border-box;border-radius:4px;border:none}"
       "input{background:#222;color:#eee}"
       "button{background:#2a7;color:#fff;cursor:pointer;font-size:1em}"
-      "button:hover{background:#3b8}"
+      "button:disabled{background:#1a4a2a;color:#555;cursor:default}"
+      "#status{margin-top:12px;font-size:.9em;min-height:1.2em}"
+      ".err{color:#f66}.ok{color:#6f6}"
       "a{color:#888}"
       "</style></head><body>"
       "<h1>Firmware Update</h1>"
-      "<p>Upload a new firmware.bin. WiFi credentials and settings are preserved.</p>"
-      "<form method='POST' enctype='multipart/form-data'>"
-      "<input type='file' name='firmware' accept='.bin' required>"
-      "<button type='submit'>Upload &amp; Restart</button>"
-      "</form>"
+      "<p>Select firmware.bin — credentials and settings are preserved.</p>"
+      "<input type='file' id='f' accept='.bin'>"
+      "<button id='btn' onclick='upload()'>Upload &amp; Restart</button>"
+      "<div id='status'></div>"
       "<p style='margin-top:20px'><a href='/'>&#8592; Back to config</a></p>"
+      "<script>"
+      "async function upload(){"
+        "const file=document.getElementById('f').files[0];"
+        "if(!file){alert('Select a .bin file first');return;}"
+        "const btn=document.getElementById('btn');"
+        "const st=document.getElementById('status');"
+        "btn.disabled=true;"
+        "st.textContent='Uploading '+file.name+' ('+Math.round(file.size/1024)+'KB)...';"
+        "try{"
+          "const r=await fetch('/update',{method:'POST',"
+            "headers:{'Content-Type':'application/octet-stream'},"
+            "body:file});"
+          "if(r.ok){"
+            "st.className='ok';"
+            "st.textContent='Done! Device is restarting — reconnect in a few seconds.';"
+          "}else{"
+            "st.className='err';"
+            "st.textContent='Failed: '+await r.text();"
+            "btn.disabled=false;"
+          "}"
+        "}catch(e){"
+          "st.className='err';"
+          "st.textContent='Error: '+e;"
+          "btn.disabled=false;"
+        "}"
+      "}"
+      "</script>"
       "</body></html>"
     );
   });
 
-  // ── POST /update — receive and flash firmware OTA ──────────────────────────
+  // ── POST /update — raw octet-stream body, written directly to OTA slot ────
   server_.on(
     "/update", HTTP_POST,
     [this](AsyncWebServerRequest *req) {
       bool ok = !Update.hasError();
-      String body = ok
-        ? "<p>Update complete! Restarting in 3 seconds...</p>"
-          "<script>setTimeout(()=>location.href='/',3000)</script>"
-        : "<p style='color:red'>Update FAILED — check serial log. "
-          "<a href='/update'>Try again</a></p>";
-      req->send(200, "text/html",
-        "<!DOCTYPE html><html><head><meta charset='UTF-8'>"
-        "<style>body{font-family:sans-serif;background:#111;color:#eee;"
-        "max-width:420px;margin:40px auto;padding:20px}</style></head>"
-        "<body>" + body + "</body></html>");
+      req->send(ok ? 200 : 500, "text/plain", ok ? "OK" : "FAILED");
       if (ok && restart_cb_) restart_cb_();
     },
-    [](AsyncWebServerRequest *req, String filename, size_t index,
-       uint8_t *data, size_t len, bool final) {
+    nullptr,  // no multipart upload handler
+    [](AsyncWebServerRequest *req, uint8_t *data, size_t len,
+       size_t index, size_t total) {
       if (index == 0) {
-        Serial.printf("[OTA] Starting: %s\n", filename.c_str());
-        if (!Update.begin(UPDATE_SIZE_UNKNOWN, U_FLASH)) {
+        Serial.printf("[OTA] Start: %u bytes\n", total);
+        if (!Update.begin(total > 0 ? total : UPDATE_SIZE_UNKNOWN, U_FLASH)) {
           Update.printError(Serial);
         }
       }
-      if (Update.write(data, len) != len) {
+      if (!Update.hasError() && Update.write(data, len) != len) {
         Update.printError(Serial);
       }
-      if (final) {
+      if (index + len >= total) {
         if (Update.end(true)) {
-          Serial.printf("[OTA] Done: %u bytes written\n", index + len);
+          Serial.printf("[OTA] Done: %u bytes\n", index + len);
         } else {
           Update.printError(Serial);
         }

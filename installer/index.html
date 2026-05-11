@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Install Diabetic Dash</title>
+  <title>Diabetic Dash</title>
   <script type="module"
     src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module">
   </script>
@@ -26,26 +26,71 @@
       border: 1px solid #2a2a2a;
       border-radius: 14px;
       padding: 36px 28px;
-      max-width: 460px;
+      max-width: 500px;
       width: 100%;
+    }
+
+    h1 {
+      font-size: 26px;
+      color: #fff;
+      margin-bottom: 4px;
       text-align: center;
     }
 
-    h1 { font-size: 26px; color: #fff; margin-bottom: 6px; }
+    .tagline {
+      color: #666;
+      font-size: 14px;
+      margin-bottom: 32px;
+      text-align: center;
+    }
 
-    .tagline { color: #666; font-size: 14px; margin-bottom: 28px; }
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 32px;
+    }
+
+    .action-box {
+      background: #161616;
+      border: 1px solid #2a2a2a;
+      border-radius: 10px;
+      padding: 18px 16px;
+      text-align: center;
+    }
+
+    .action-box h2 {
+      font-size: 13px;
+      font-weight: 600;
+      color: #ccc;
+      margin-bottom: 6px;
+    }
+
+    .action-box p {
+      font-size: 12px;
+      color: #555;
+      line-height: 1.5;
+      margin-bottom: 14px;
+    }
 
     esp-web-install-button {
       display: block;
-      margin: 0 auto 28px;
+    }
+
+    .btn-install {
       --esp-tools-button-color: #2563eb;
       --esp-tools-button-text-color: #fff;
     }
 
-    .steps {
-      text-align: left;
+    .btn-update {
+      --esp-tools-button-color: #065f46;
+      --esp-tools-button-text-color: #6ee7b7;
+    }
+
+    .divider {
+      border: none;
       border-top: 1px solid #2a2a2a;
-      padding-top: 20px;
+      margin-bottom: 24px;
     }
 
     .steps h2 {
@@ -59,19 +104,20 @@
 
     ol {
       padding-left: 18px;
-      color: #999;
-      font-size: 14px;
-      line-height: 1.7;
+      color: #888;
+      font-size: 13px;
+      line-height: 1.75;
     }
 
-    ol li { margin-bottom: 6px; }
+    ol li { margin-bottom: 4px; }
 
     strong { color: #ddd; }
 
     .note {
       margin-top: 20px;
       font-size: 12px;
-      color: #555;
+      color: #444;
+      text-align: center;
     }
 
     a { color: #3b82f6; text-decoration: none; }
@@ -81,36 +127,48 @@
 <body>
   <div class="card">
     <h1>Diabetic Dash</h1>
-    <p class="tagline">
-      Real-time CGM display for the Adafruit Matrix Portal S3
-    </p>
+    <p class="tagline">Real-time CGM display for the Adafruit Matrix Portal S3</p>
 
-    <esp-web-install-button manifest="manifest.json">
-      <button slot="activate">Install Firmware</button>
-    </esp-web-install-button>
+    <div class="actions">
+      <div class="action-box">
+        <h2>Fresh Install</h2>
+        <p>First time? Sets up the device from scratch. You'll re-enter your credentials.</p>
+        <esp-web-install-button class="btn-install" manifest="manifest.json">
+          <button slot="activate">Install</button>
+        </esp-web-install-button>
+      </div>
+
+      <div class="action-box">
+        <h2>Update</h2>
+        <p>Already configured? Flashes new firmware only — credentials stay.</p>
+        <esp-web-install-button class="btn-update" manifest="manifest-update.json">
+          <button slot="activate">Update</button>
+        </esp-web-install-button>
+      </div>
+    </div>
+
+    <hr class="divider">
 
     <div class="steps">
-      <h2>After installing</h2>
+      <h2>After a fresh install</h2>
       <ol>
-        <li>
-          Connect your device to power via USB-C.
-        </li>
+        <li>Connect the device to power via USB-C.</li>
         <li>
           On your phone or computer, join the WiFi network
           <strong>DiabeticDash-Setup</strong>.
         </li>
         <li>
           Open <strong>192.168.4.1</strong> in your browser and enter your
-          WiFi credentials and Dexcom login.
+          WiFi credentials and Dexcom or Nightscout login.
         </li>
         <li>
           Click <strong>Save &amp; Restart</strong> — the dashboard will
-          appear on the display within a minute.
+          appear within a minute.
         </li>
       </ol>
 
       <p class="note">
-        Requires Chrome or Edge with a USB connection to the device.
+        Requires Chrome or Edge · USB connection to device ·
         <a href="https://github.com/dvdcd/UrbanistDiabeticDash"
            target="_blank" rel="noopener">Source on GitHub</a>
       </p>

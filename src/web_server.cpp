@@ -1,6 +1,7 @@
 #include "web_server.h"
 #include <LittleFS.h>
 #include <ArduinoJson.h>
+#include <Update.h>
 
 DashWebServer::DashWebServer(ConfigStore &store) : store_(store) {}
 
@@ -98,6 +99,70 @@ void DashWebServer::begin() {
       req->send(200, "application/json", "{\"ok\":true}");
 
       if (restart_cb_) restart_cb_();
+    }
+  );
+
+  // ── GET /update — firmware upload form ────────────────────────────────────
+  server_.on("/update", HTTP_GET, [](AsyncWebServerRequest *req) {
+    req->send(200, "text/html",
+      "<!DOCTYPE html><html><head><meta charset='UTF-8'>"
+      "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+      "<title>Firmware Update</title>"
+      "<style>"
+      "body{font-family:sans-serif;background:#111;color:#eee;max-width:420px;margin:40px auto;padding:20px}"
+      "h1{margin:0 0 4px}p{color:#aaa;margin:0 0 20px;font-size:.9em}"
+      "input,button{width:100%;padding:10px;margin:6px 0;box-sizing:border-box;border-radius:4px;border:none}"
+      "input{background:#222;color:#eee}"
+      "button{background:#2a7;color:#fff;cursor:pointer;font-size:1em}"
+      "button:hover{background:#3b8}"
+      "a{color:#888}"
+      "</style></head><body>"
+      "<h1>Firmware Update</h1>"
+      "<p>Upload a new firmware.bin. WiFi credentials and settings are preserved.</p>"
+      "<form method='POST' enctype='multipart/form-data'>"
+      "<input type='file' name='firmware' accept='.bin' required>"
+      "<button type='submit'>Upload &amp; Restart</button>"
+      "</form>"
+      "<p style='margin-top:20px'><a href='/'>&#8592; Back to config</a></p>"
+      "</body></html>"
+    );
+  });
+
+  // ── POST /update — receive and flash firmware OTA ──────────────────────────
+  server_.on(
+    "/update", HTTP_POST,
+    [this](AsyncWebServerRequest *req) {
+      bool ok = !Update.hasError();
+      String body = ok
+        ? "<p>Update complete! Restarting in 3 seconds...</p>"
+          "<script>setTimeout(()=>location.href='/',3000)</script>"
+        : "<p style='color:red'>Update FAILED — check serial log. "
+          "<a href='/update'>Try again</a></p>";
+      req->send(200, "text/html",
+        "<!DOCTYPE html><html><head><meta charset='UTF-8'>"
+        "<style>body{font-family:sans-serif;background:#111;color:#eee;"
+        "max-width:420px;margin:40px auto;padding:20px}</style></head>"
+        "<body>" + body + "</body></html>");
+      if (ok && restart_cb_) restart_cb_();
+    },
+    [](AsyncWebServerRequest *req, String filename, size_t index,
+       uint8_t *data, size_t len, bool final) {
+      if (index == 0) {
+        Serial.printf("[OTA] Starting: %s\n", filename.c_str());
+        if (!Update.begin(UPDATE_SIZE_UNKNOWN, U_FLASH)) {
+          Update.printError(Serial);
+        }
+      }
+      if (Update.write(data, len) != len) {
+        Update.printError(Serial);
+      }
+      if (final) {
+        if (Update.end(true)) {
+          Serial.printf("[OTA] Done: %u bytes written\n", index + len);
+        } else {
+          Update.printError(Serial);
+        }
+      }
     }
   );
 

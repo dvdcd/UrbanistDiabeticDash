@@ -77,6 +77,33 @@
     <section>
       <h2>Display</h2>
       <label>
+        Timezone
+        <select name="timezone">
+          <option value="UTC0">UTC</option>
+          <optgroup label="United States">
+            <option value="EST5EDT,M3.2.0,M11.1.0">Eastern (ET)</option>
+            <option value="CST6CDT,M3.2.0,M11.1.0">Central (CT)</option>
+            <option value="MST7MDT,M3.2.0,M11.1.0">Mountain (MT)</option>
+            <option value="MST7">Mountain – Arizona (no DST)</option>
+            <option value="PST8PDT,M3.2.0,M11.1.0">Pacific (PT)</option>
+            <option value="AKST9AKDT,M3.2.0,M11.1.0">Alaska (AKT)</option>
+            <option value="HST10">Hawaii (HST)</option>
+          </optgroup>
+          <optgroup label="Europe">
+            <option value="GMT0BST,M3.5.0/1,M10.5.0">London (GMT/BST)</option>
+            <option value="CET-1CEST,M3.5.0,M10.5.0/3">Central Europe (CET)</option>
+            <option value="EET-2EEST,M3.5.0/3,M10.5.0/4">Eastern Europe (EET)</option>
+          </optgroup>
+          <optgroup label="Asia / Pacific">
+            <option value="IST-5:30">India (IST)</option>
+            <option value="CST-8">China / HK / Singapore (CST)</option>
+            <option value="JST-9">Japan / Korea (JST)</option>
+            <option value="AEST-10AEDT,M10.1.0,M4.1.0/3">Australia Eastern (AEST)</option>
+            <option value="NZST-12NZDT,M9.5.0,M4.1.0/3">New Zealand (NZST)</option>
+          </optgroup>
+        </select>
+      </label>
+      <label>
         Glucose units
         <select name="unit_mgdl">
           <option value="true">mg/dL</option>

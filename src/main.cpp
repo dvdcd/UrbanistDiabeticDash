@@ -87,9 +87,9 @@ void setup() {
 
   Serial.printf("[Main] WiFi connected: %s\n", WiFi.localIP().toString().c_str());
 
-  // Sync time — required for stale-reading detection.
-  configTime(0, 0, "pool.ntp.org", "time.nist.gov");
-  Serial.println("[Main] NTP sync requested");
+  // Sync time — required for stale-reading detection and clock display.
+  configTzTime(config.timezone.c_str(), "pool.ntp.org", "time.nist.gov");
+  Serial.printf("[Main] NTP sync requested (tz=%s)\n", config.timezone.c_str());
 
   start_web_server();
 

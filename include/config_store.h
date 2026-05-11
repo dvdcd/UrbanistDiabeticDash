@@ -14,6 +14,8 @@ struct DashConfig {
   // Nightscout
   String    nightscout_url;    // e.g. "https://mysite.fly.dev"
   String    nightscout_secret; // raw API secret (stored in NVS, never returned by GET /config)
+  // Time
+  String    timezone           = "UTC0";  // POSIX TZ string
   // Display
   int       glucose_low        = 70;
   int       glucose_high       = 180;

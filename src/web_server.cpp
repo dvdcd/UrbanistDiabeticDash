@@ -164,8 +164,6 @@ void DashWebServer::begin() {
   );
 
   // ── GET /update — firmware upload page ────────────────────────────────────
-  // Uses JS fetch with application/octet-stream body — avoids multipart
-  // parsing issues with AsyncWebServer on large binaries.
   server_.on("/update", HTTP_GET, [](AsyncWebServerRequest *req) {
     req->send(200, "text/html",
       "<!DOCTYPE html><html><head><meta charset='UTF-8'>"
@@ -197,9 +195,9 @@ void DashWebServer::begin() {
         "btn.disabled=true;"
         "st.textContent='Uploading '+file.name+' ('+Math.round(file.size/1024)+'KB)...';"
         "try{"
-          "const r=await fetch('/update',{method:'POST',"
-            "headers:{'Content-Type':'application/octet-stream'},"
-            "body:file});"
+          "const fd=new FormData();"
+          "fd.append('firmware',file,file.name);"
+          "const r=await fetch('/update',{method:'POST',body:fd});"
           "if(r.ok){"
             "st.className='ok';"
             "st.textContent='Done! Device is restarting — reconnect in a few seconds.';"
@@ -219,30 +217,28 @@ void DashWebServer::begin() {
     );
   });
 
-  // ── POST /update — raw octet-stream body, written directly to OTA slot ────
+  // ── POST /update — multipart/form-data upload, written to OTA slot ─────────
+  // onUpload (4th arg) receives each chunk; Update.end() called on final chunk.
+  // Request handler (1st arg) fires after the full body and checks for errors.
   server_.on(
     "/update", HTTP_POST,
     [this](AsyncWebServerRequest *req) {
-      // Request handler fires after ALL body chunks — safe to finalize here.
-      bool ok = !Update.hasError() && Update.end(true);
+      bool ok = !Update.hasError();
       Serial.printf("[OTA] %s\n", ok ? "Done" : Update.errorString());
       req->send(ok ? 200 : 500, "text/plain", ok ? "OK" : Update.errorString());
       if (ok && restart_cb_) restart_cb_();
     },
-    nullptr,  // no multipart upload handler
-    [](AsyncWebServerRequest *req, uint8_t *data, size_t len,
-       size_t index, size_t total) {
+    [](AsyncWebServerRequest *req, const String &filename,
+       size_t index, uint8_t *data, size_t len, bool final) {
       if (index == 0) {
-        Serial.printf("[OTA] Start: %u bytes\n", total);
-        if (!Update.begin(total > 0 ? total : UPDATE_SIZE_UNKNOWN, U_FLASH)) {
+        Serial.printf("[OTA] Start: %s\n", filename.c_str());
+        if (!Update.begin(UPDATE_SIZE_UNKNOWN, U_FLASH))
           Serial.printf("[OTA] begin failed: %s\n", Update.errorString());
-        }
       }
-      if (!Update.hasError() && Update.write(data, len) != len) {
-        Serial.printf("[OTA] write error at %u\n", index);
-      }
-      // Do NOT call Update.end() here — request handler does it once,
-      // after all chunks. Calling end() mid-stream was corrupting the image.
+      if (!Update.hasError() && Update.write(data, len) != len)
+        Serial.printf("[OTA] write error at %u\n", (unsigned)index);
+      if (final && !Update.end(true))
+        Serial.printf("[OTA] end failed: %s\n", Update.errorString());
     }
   );
 

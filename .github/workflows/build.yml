@@ -82,10 +82,16 @@ jobs:
           git commit -m "ci: rebuild binaries v${VERSION} [skip ci]"
           git push origin HEAD:main
 
+      - name: Stage Pages site (installer at root, sim at /sim/)
+        run: |
+          mkdir -p _site/sim
+          cp -r installer/. _site/
+          cp sim/index.html _site/sim/index.html
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: installer/
+          path: _site/
 
       - name: Deploy to GitHub Pages
         id: deploy

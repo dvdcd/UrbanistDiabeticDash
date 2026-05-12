@@ -12,8 +12,8 @@ class DexcomSource : public CGMSource {
   void reset_session();
 
  private:
-  bool    authenticate_();
-  bool    login_();
+  bool    authenticate_(CGMData &out);
+  bool    login_(CGMData &out);
   bool    read_glucose_(CGMData &out);
   String  http_post_(const String &url, const String &body);
   int     trend_str_to_code_(const char *trend);

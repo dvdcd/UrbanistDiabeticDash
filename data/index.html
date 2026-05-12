@@ -12,6 +12,29 @@
     <p class="subtitle">Configure your dashboard</p>
   </header>
 
+  <section id="status-card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <h2 style="margin:0">Device Status</h2>
+      <button type="button" id="refresh-btn" onclick="fetchStatus()"
+              style="width:auto;padding:4px 10px;font-size:12px;font-weight:400;
+                     background:#2a2a2a;margin:0;border-radius:6px">↻ Refresh</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:9px;margin-bottom:10px">
+      <span id="s-dot" style="display:inline-block;width:10px;height:10px;
+                               border-radius:50%;background:#444;flex-shrink:0"></span>
+      <span id="s-summary" style="font-size:14px;color:#888">Loading…</span>
+    </div>
+    <div id="s-error-wrap" style="display:none;margin-bottom:10px">
+      <div style="font-size:11px;color:#555;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Error detail</div>
+      <pre id="s-error-text"
+           style="font-family:'Courier New',monospace;font-size:11px;color:#ef4444;
+                  background:#1a0000;border:1px solid #3a1515;border-radius:6px;
+                  padding:7px 9px;white-space:pre-wrap;word-break:break-all;
+                  max-height:100px;overflow-y:auto;margin:0"></pre>
+    </div>
+    <div id="s-meta" style="font-size:12px;color:#555;line-height:1.9"></div>
+  </section>
+
   <form id="form" autocomplete="off">
 
     <section>
@@ -330,6 +353,66 @@
         .then(() => setStatus('Reset! Connect to DiabeticDash-Setup WiFi.', false))
         .catch(() => setStatus('Reset request failed.', true));
     });
+
+    // ── Device status card ──────────────────────────────────────────────────
+    function fetchStatus() {
+      fetch('/status')
+        .then(r => r.json())
+        .then(updateStatusCard)
+        .catch(() => {
+          document.getElementById('s-dot').style.background = '#555';
+          document.getElementById('s-summary').style.color  = '#888';
+          document.getElementById('s-summary').textContent  = 'Unreachable';
+          document.getElementById('s-error-wrap').style.display = 'none';
+          document.getElementById('s-meta').textContent = '';
+        });
+    }
+
+    function updateStatusCard(s) {
+      const dot     = document.getElementById('s-dot');
+      const summary = document.getElementById('s-summary');
+      const errWrap = document.getElementById('s-error-wrap');
+      const errText = document.getElementById('s-error-text');
+      const meta    = document.getElementById('s-meta');
+
+      if (s.ok) {
+        dot.style.background = '#10b981';
+        summary.style.color  = '#10b981';
+        summary.textContent  = `OK — ${s.value_mgdl} mg/dL`;
+        errWrap.style.display = 'none';
+      } else {
+        dot.style.background = '#ef4444';
+        summary.style.color  = '#ef4444';
+        summary.textContent  = s.error || 'Error';
+        if (s.error && s.error !== 'No data yet') {
+          errWrap.style.display = '';
+          errText.textContent   = s.error;
+        } else {
+          errWrap.style.display = 'none';
+        }
+      }
+
+      const parts = [];
+      if (s.last_fetch_s >= 0) {
+        parts.push(`Last fetch: ${s.last_fetch_s}s ago`);
+      }
+      if (s.wifi_ip && s.wifi_ip !== '0.0.0.0') {
+        parts.push(`IP: ${s.wifi_ip}`);
+      }
+      if (s.wifi_rssi) {
+        parts.push(`RSSI: ${s.wifi_rssi} dBm`);
+      }
+      if (s.uptime_s) {
+        const h = Math.floor(s.uptime_s / 3600);
+        const m = Math.floor((s.uptime_s % 3600) / 60);
+        const sc = s.uptime_s % 60;
+        parts.push(`Uptime: ${h > 0 ? h + 'h ' : ''}${m > 0 ? m + 'm ' : ''}${sc}s`);
+      }
+      meta.textContent = parts.join('  ·  ');
+    }
+
+    fetchStatus();
+    setInterval(fetchStatus, 15000);
   </script>
 </body>
 </html>

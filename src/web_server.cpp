@@ -2,6 +2,7 @@
 #include <LittleFS.h>
 #include <ArduinoJson.h>
 #include <Update.h>
+#include <WiFi.h>
 
 DashWebServer::DashWebServer(ConfigStore &store) : store_(store) {}
 
@@ -9,6 +10,22 @@ void DashWebServer::begin() {
   if (!LittleFS.begin(/*formatOnFail=*/true)) {
     Serial.println("[WebServer] LittleFS mount failed");
   }
+
+  // ── GET /status — runtime debug info (CGM error, WiFi, uptime) ────────────
+  server_.on("/status", HTTP_GET, [this](AsyncWebServerRequest *req) {
+    JsonDocument doc;
+    doc["ok"]          = status_valid_;
+    doc["error"]       = status_error_;
+    doc["value_mgdl"]  = status_mgdl_;
+    doc["last_fetch_s"] = status_push_ms_ > 0
+        ? (long)((millis() - status_push_ms_) / 1000UL) : -1L;
+    doc["wifi_ip"]     = WiFi.localIP().toString();
+    doc["wifi_rssi"]   = WiFi.RSSI();
+    doc["uptime_s"]    = (long)(millis() / 1000UL);
+    String json;
+    serializeJson(doc, json);
+    req->send(200, "application/json", json);
+  });
 
   // ── Static files ────────────────────────────────────────────────────────────
   server_.on("/", HTTP_GET, [](AsyncWebServerRequest *req) {
@@ -251,4 +268,11 @@ void DashWebServer::begin() {
 
   server_.begin();
   Serial.println("[WebServer] started on port 80");
+}
+
+void DashWebServer::push_status(bool valid, const String &error, int value_mgdl) {
+  status_valid_   = valid;
+  status_error_   = error;
+  status_mgdl_    = value_mgdl;
+  status_push_ms_ = millis();
 }

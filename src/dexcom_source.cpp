@@ -1,8 +1,19 @@
 #include "dexcom_source.h"
 #include <WiFiClientSecure.h>
+#include <WiFiClient.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 #include <time.h>
+
+// TCP probe to Cloudflare DNS (1.1.1.1:80) — fast, no TLS, no DNS needed.
+// Returns true if a basic internet path exists.
+static bool check_internet_() {
+  WiFiClient client;
+  client.setTimeout(3000);
+  bool ok = client.connect(IPAddress(1, 1, 1, 1), 80);
+  if (ok) client.stop();
+  return ok;
+}
 
 DexcomSource::DexcomSource(const DashConfig &config) {
   username_ = config.dexcom_username;
@@ -78,7 +89,10 @@ bool DexcomSource::authenticate_(CGMData &out) {
   if (resp.startsWith("ERR:")) {
     Serial.println("[Dexcom] authenticate failed: " + resp);
     out.valid = false;
-    out.error = "Auth: " + resp;
+    // Negative HTTP code = connection-level failure (timeout, refused, etc.).
+    // Probe 1.1.1.1 to distinguish "no internet" from a Dexcom-specific error.
+    long code = strtol(resp.c_str() + 4, nullptr, 10);
+    out.error = (code <= 0 && !check_internet_()) ? "No internet" : "Auth: " + resp;
     return false;
   }
   resp.replace("\"", "");

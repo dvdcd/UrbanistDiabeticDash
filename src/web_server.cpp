@@ -5,9 +5,12 @@
 #include <WiFi.h>
 #include <stdarg.h>
 
-// ── OTA log ring buffer ───────────────────────────────────────────────────────
+// ── OTA log ring buffer + safety flag ────────────────────────────────────────
 static String s_ota_log;
 static constexpr size_t OTA_LOG_MAX = 4096;
+// Set true when we detect a bad upload; blocks Update.end() so a corrupt
+// binary is never committed as the next boot target.
+static bool s_ota_bad = false;
 
 static void ota_log(const char *fmt, ...) {
   char tmp[256];
@@ -301,37 +304,78 @@ void DashWebServer::begin() {
   // ── POST /update — multipart/form-data upload, written to OTA slot ─────────
   server_.on(
     "/update", HTTP_POST,
+    // onRequest — fires after all upload chunks are processed.
     [this](AsyncWebServerRequest *req) {
+      if (s_ota_bad) {
+        req->send(400, "text/plain", s_ota_log.c_str());
+        return;
+      }
       bool ok = !Update.hasError();
       ota_log("[OTA] result: %s\n", ok ? "OK" : Update.errorString());
       req->send(ok ? 200 : 500, "text/plain", ok ? "OK" : Update.errorString());
       if (ok && restart_cb_) restart_cb_();
     },
+    // onUpload — called for each chunk of the multipart body.
     [](AsyncWebServerRequest *req, const String &filename,
        size_t index, uint8_t *data, size_t len, bool final) {
       if (index == 0) {
-        s_ota_log = "";  // clear log at start of each upload
+        s_ota_log = "";
+        s_ota_bad = false;
         ota_log("[OTA] start '%s'  heap=%u\n",
                 filename.c_str(), (unsigned)ESP.getFreeHeap());
-        if (!Update.begin(UPDATE_SIZE_UNKNOWN, U_FLASH))
+
+        // ESP32 firmware binaries always begin with magic byte 0xE9.
+        // Reject anything else (e.g. littlefs.bin, wrong file) immediately
+        // so we never commit a non-firmware binary as the boot target.
+        if (len == 0 || data[0] != 0xE9) {
+          s_ota_bad = true;
+          ota_log("[OTA] REJECTED: not an ESP32 firmware "
+                  "(first byte=0x%02X, expected 0xE9)\n",
+                  len > 0 ? data[0] : 0);
+          return;
+        }
+
+        if (!Update.begin(UPDATE_SIZE_UNKNOWN, U_FLASH)) {
+          s_ota_bad = true;
           ota_log("[OTA] begin FAILED: %s\n", Update.errorString());
-        else
-          ota_log("[OTA] begin OK\n");
+          return;
+        }
+        ota_log("[OTA] begin OK\n");
       }
+
+      if (s_ota_bad) return;  // swallow remaining chunks after a detected error
+
       if (!Update.hasError()) {
         size_t written = Update.write(data, len);
-        if (written != len)
+        if (written != len) {
+          s_ota_bad = true;
           ota_log("[OTA] write FAILED at %u: wrote %u/%u  err=%s\n",
                   (unsigned)index, (unsigned)written, (unsigned)len,
                   Update.errorString());
-        else if ((index >> 16) != ((index + len) >> 16))
+          Update.abort();
+          return;
+        }
+        if ((index >> 16) != ((index + len) >> 16))
           ota_log("[OTA] %u KB written\n", (unsigned)((index + len) >> 10));
       }
+
       if (final) {
-        if (Update.end(true))
-          ota_log("[OTA] end OK — %u KB total\n", (unsigned)((index + len) >> 10));
-        else
+        size_t total = index + len;
+        if (s_ota_bad || Update.hasError()) {
+          Update.abort();
+          ota_log("[OTA] ABORTED after errors — partition NOT marked bootable\n");
+        } else if (total < 131072) {
+          // A valid ESP32-S3 app is always larger than 128 KB.
+          // Abort if suspiciously small to avoid bricking on partial uploads.
+          Update.abort();
+          s_ota_bad = true;
+          ota_log("[OTA] ABORTED: binary only %u bytes — looks truncated\n",
+                  (unsigned)total);
+        } else if (Update.end(true)) {
+          ota_log("[OTA] end OK — %u KB total\n", (unsigned)(total >> 10));
+        } else {
           ota_log("[OTA] end FAILED: %s\n", Update.errorString());
+        }
       }
     }
   );

@@ -5,77 +5,102 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Diabetic Dash Simulator</title>
   <style>
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{
-      background:#111;color:#ddd;
-      font-family:"Courier New",Courier,monospace;font-size:13px;
-      display:flex;flex-direction:row;gap:20px;padding:20px;min-height:100vh;
+    /* Base — identical to data/style.css */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #111;
+      color: #e0e0e0;
+      display: flex;
+      flex-direction: row;
+      align-items: flex-start;
+      gap: 24px;
+      padding: 20px;
+      min-height: 100vh;
     }
-    /* ── Left: display ── */
-    #display-col{flex-shrink:0}
-    #display-frame{
-      background:#000;border:3px solid #2a2a2a;border-radius:4px;
-      display:inline-block;padding:10px;
+    section {
+      background: #1e1e1e;
+      border: 1px solid #2a2a2a;
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 14px;
     }
-    canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges}
-    #fps{color:#444;font-size:11px;margin-top:6px}
-    /* ── Right: controls ── */
-    #controls{
-      width:280px;display:flex;flex-direction:column;gap:12px;
-      overflow-y:auto;max-height:calc(100vh - 40px);padding-right:4px;
-      scrollbar-width:thin;scrollbar-color:#333 #111;
+    h1 { font-size: 22px; font-weight: 700; color: #fff; letter-spacing: -0.3px; }
+    .subtitle { font-size: 13px; color: #666; margin-top: 2px; margin-bottom: 16px; }
+    h2 {
+      font-size: 11px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.8px; color: #555; margin-bottom: 14px;
     }
-    h2{
-      font-size:10px;color:#555;text-transform:uppercase;letter-spacing:2px;
-      margin-bottom:7px;border-bottom:1px solid #2a2a2a;padding-bottom:3px;
+    label { display: block; font-size: 13px; color: #999; margin-bottom: 12px; }
+    label:last-child { margin-bottom: 0; }
+    input, select {
+      display: block; width: 100%; margin-top: 5px;
+      padding: 9px 11px; background: #2a2a2a; border: 1px solid #383838;
+      border-radius: 6px; color: #eee; font-size: 15px;
+      outline: none; transition: border-color 0.15s;
     }
-    .row{display:flex;align-items:center;gap:7px;margin-bottom:5px}
-    .row label{width:82px;flex-shrink:0;color:#777}
-    .row input[type=range]{flex:1;accent-color:#2a7;height:4px}
-    .row input[type=number]{
-      width:52px;background:#1c1c1c;color:#eee;
-      border:1px solid #3a3a3a;border-radius:3px;padding:3px 6px;
+    input:focus, select:focus { border-color: #3b82f6; }
+    .row { display: flex; gap: 10px; }
+    .row label { flex: 1; }
+    button {
+      display: block; width: 100%; padding: 12px; margin-bottom: 10px;
+      background: #2563eb; color: #fff; border: none; border-radius: 8px;
+      font-size: 15px; font-weight: 600; cursor: pointer; transition: background 0.15s;
     }
-    .row input[type=number].wide{flex:1}
-    .row select{
-      flex:1;background:#1c1c1c;color:#eee;
-      border:1px solid #3a3a3a;border-radius:3px;padding:4px 6px;
+    button:hover { background: #1d4ed8; }
+    button.secondary {
+      background: #1e3a5f; color: #7af; font-weight: 400; font-size: 13px;
     }
-    .row input[type=color]{
-      width:32px;height:26px;border:1px solid #3a3a3a;border-radius:3px;
-      background:#1c1c1c;cursor:pointer;padding:2px;
+    button.secondary:hover { background: #1a4a7a; }
+    .hint { font-size: 12px; color: #555; margin-top: 10px; line-height: 1.5; }
+    /* Simulator layout */
+    #display-col { flex-shrink: 0; }
+    #display-frame {
+      background: #000; border: 3px solid #2a2a2a;
+      border-radius: 4px; display: inline-block; padding: 10px;
     }
-    .hex{color:#555;font-size:11px;width:52px;flex-shrink:0}
-    /* Toggles */
-    .toggles{display:flex;flex-wrap:wrap;gap:5px}
-    .toggle{
-      padding:4px 9px;background:#1c1c1c;border:1px solid #3a3a3a;
-      border-radius:3px;color:#666;cursor:pointer;
-      font-family:inherit;font-size:12px;transition:all .1s;
+    canvas { display: block; image-rendering: pixelated; image-rendering: crisp-edges; }
+    #fps-ver { color: #444; font-size: 11px; font-family: monospace; margin-top: 6px; }
+    #controls {
+      width: 480px; max-height: calc(100vh - 40px);
+      overflow-y: auto; padding-right: 4px; padding-bottom: 20px;
+      scrollbar-width: thin; scrollbar-color: #333 #111;
     }
-    .toggle.on{background:#0d2a1a;border-color:#2a7;color:#3db}
+    header { margin-bottom: 16px; }
+    /* State toggles */
+    .toggles { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 5px; }
+    .toggle {
+      padding: 7px 13px; background: #2a2a2a; border: 1px solid #383838;
+      border-radius: 6px; color: #777; cursor: pointer; font-size: 13px;
+      font-family: inherit; transition: all .1s; width: auto; margin-bottom: 0;
+    }
+    .toggle.on { background: #0d2a1a; border-color: #2a7; color: #3db; }
     /* Trend grid */
-    .trend-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
-    .trend-btn{
-      padding:4px 3px;background:#1c1c1c;border:1px solid #3a3a3a;
-      border-radius:3px;color:#666;cursor:pointer;
-      font-family:inherit;font-size:11px;text-align:center;
+    .trend-grid {
+      display: grid; grid-template-columns: repeat(4,1fr);
+      gap: 6px; margin-top: 5px;
     }
-    .trend-btn.active{background:#0d2a1a;border-color:#2a7;color:#3db}
+    .trend-btn {
+      padding: 7px 4px; background: #2a2a2a; border: 1px solid #383838;
+      border-radius: 6px; color: #777; cursor: pointer; font-size: 12px;
+      font-family: inherit; text-align: center; width: auto; margin-bottom: 0;
+    }
+    .trend-btn.active { background: #0d2a1a; border-color: #2a7; color: #3db; }
+    /* Glucose row */
+    .slider-row { display: flex; align-items: center; gap: 10px; margin-top: 5px; }
+    .slider-row input[type=range] { flex: 1; accent-color: #2563eb; }
+    .slider-row input[type=number] { width: 80px; display: inline; margin-top: 0; }
     /* Presets */
-    .presets{display:flex;flex-wrap:wrap;gap:5px}
-    .preset-btn{
-      padding:4px 9px;background:#1c1c1c;border:1px solid #3a3a3a;
-      border-radius:3px;cursor:pointer;font-family:inherit;font-size:12px;
+    .presets { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 5px; }
+    .preset-btn {
+      padding: 7px 13px; background: #2a2a2a; border: 1px solid #383838;
+      border-radius: 6px; cursor: pointer; font-size: 13px; font-family: inherit;
+      width: auto; margin-bottom: 0; font-weight: 400; color: #eee;
     }
-    /* Copy button */
-    #copy-btn{
-      width:100%;padding:8px;background:#0d1f3a;border:1px solid #1a3a6a;
-      border-radius:3px;color:#7af;cursor:pointer;font-family:inherit;font-size:13px;
-    }
-    #copy-btn:hover{background:#112a50}
-    #copy-toast{color:#3db;font-size:11px;text-align:center;height:16px;margin-top:4px}
-    section{/* grouping only */}
+    .preset-btn:hover { background: #333; }
+    /* Color rows */
+    input[type=color] { padding: 2px 4px; height: 36px; cursor: pointer; }
+    #copy-toast { color: #3db; font-size: 11px; text-align: center; height: 16px; margin-top: 4px; }
   </style>
 </head>
 <body>
@@ -84,259 +109,398 @@
   <div id="display-frame">
     <canvas id="c" width="768" height="192"></canvas>
   </div>
-  <div id="fps">fps: --</div>
+  <div id="fps-ver">fps: -- &nbsp;·&nbsp; v__VERSION__</div>
 </div>
 
 <div id="controls">
+  <header>
+    <h1>Diabetic Dash</h1>
+    <p class="subtitle">Simulator — v__VERSION__</p>
+  </header>
 
+  <!-- Simulator state (not on real device) -->
   <section>
-    <h2>Glucose</h2>
+    <h2>Simulator</h2>
+    <label>
+      Glucose (mg/dL)
+      <div class="slider-row">
+        <input type="range" id="glucose-range" min="40" max="400" value="112"
+               oninput="onGlucoseRange(this.value)">
+        <input type="number" id="glucose-num" min="40" max="400" value="112"
+               oninput="onGlucoseNum(this.value)">
+      </div>
+    </label>
+    <label>
+      Trend
+      <div class="trend-grid" id="trend-grid"></div>
+    </label>
+    <label>
+      State
+      <div class="toggles">
+        <button class="toggle" id="t-stale"  onclick="toggleState('stale')">Stale</button>
+        <button class="toggle" id="t-error"  onclick="toggleState('error')">Error</button>
+        <button class="toggle" id="t-flip"   onclick="toggleState('flipped')">Flip</button>
+      </div>
+    </label>
+    <label>
+      Presets
+      <div class="presets">
+        <button class="preset-btn" style="color:#f77" onclick="setPreset(55,7)">Low ↓↓</button>
+        <button class="preset-btn" style="color:#fb9" onclick="setPreset(75,6)">Warn ↓</button>
+        <button class="preset-btn" style="color:#4db" onclick="setPreset(112,4)">Normal →</button>
+        <button class="preset-btn" style="color:#fb9" onclick="setPreset(155,3)">Warn ↑</button>
+        <button class="preset-btn" style="color:#f77" onclick="setPreset(220,1)">High ↑↑</button>
+      </div>
+    </label>
+  </section>
+
+  <!-- Display — mirrors device UI exactly -->
+  <section>
+    <h2>Display</h2>
+    <label>
+      Glucose units
+      <select name="unit_mgdl">
+        <option value="true">mg/dL</option>
+        <option value="false">mmol/L</option>
+      </select>
+    </label>
     <div class="row">
-      <label>mg/dL</label>
-      <input type="range" id="glucose-range" min="40" max="400" value="112"
-             oninput="onGlucoseRange(this.value)">
-      <input type="number" id="glucose-num" min="40" max="400" value="112"
-             oninput="onGlucoseNum(this.value)">
+      <label>
+        Low (red)
+        <input name="glucose_low" type="number" min="40" max="400" step="1" value="70"
+               oninput="cfg.glucose_low = +this.value">
+      </label>
+      <label>
+        Warn low (yellow)
+        <input name="glucose_warn_low" type="number" min="40" max="400" step="1" value="80"
+               oninput="cfg.glucose_warn_low = +this.value">
+      </label>
+    </div>
+    <div class="row">
+      <label>
+        Warn high (yellow)
+        <input name="glucose_warn_high" type="number" min="40" max="400" step="1" value="160"
+               oninput="cfg.glucose_warn_high = +this.value">
+      </label>
+      <label>
+        High (red)
+        <input name="glucose_high" type="number" min="40" max="400" step="1" value="180"
+               oninput="cfg.glucose_high = +this.value">
+      </label>
     </div>
   </section>
 
+  <!-- Style — mirrors device UI exactly -->
   <section>
-    <h2>Trend</h2>
-    <div class="trend-grid" id="trend-grid"></div>
-  </section>
-
-  <section>
-    <h2>State</h2>
-    <div class="toggles">
-      <button class="toggle" id="t-stale"  onclick="toggleState('stale')">Stale</button>
-      <button class="toggle" id="t-error"  onclick="toggleState('error')">Error</button>
-      <button class="toggle" id="t-flip"   onclick="toggleState('flipped')">Flip</button>
-    </div>
-  </section>
-
-  <section>
-    <h2>Colors</h2>
-    <div class="row">
-      <label>Alert</label>
-      <input type="color" id="c-low"  value="#ff2200" oninput="onColor('color_low',  this.value)">
-      <span class="hex" id="c-low-hex">#ff2200</span>
-    </div>
-    <div class="row">
-      <label>Warning</label>
-      <input type="color" id="c-warn" value="#ffcc00" oninput="onColor('color_warn', this.value)">
-      <span class="hex" id="c-warn-hex">#ffcc00</span>
-    </div>
-    <div class="row">
-      <label>OK</label>
-      <input type="color" id="c-ok"   value="#00cc44" oninput="onColor('color_ok',   this.value)">
-      <span class="hex" id="c-ok-hex">#00cc44</span>
-    </div>
-    <div class="row">
-      <label>Wave</label>
-      <input type="color" id="c-wave" value="#0035d2" oninput="onColor('color_wave', this.value)">
-      <span class="hex" id="c-wave-hex">#0035d2</span>
-    </div>
-  </section>
-
-  <section>
-    <h2>Wave</h2>
-    <div class="row">
-      <label>Style</label>
-      <select onchange="cfg.status_bar_style = +this.value">
-        <option value="0">Wave (animated)</option>
-        <option value="1">Solid</option>
+    <h2>Style</h2>
+    <label>
+      Clock format
+      <select name="clock_24h" onchange="cfg.clock_24h = this.value==='true'">
+        <option value="false">12-hour (AM/PM)</option>
+        <option value="true">24-hour</option>
+      </select>
+    </label>
+    <label>
+      Status bar
+      <select name="status_bar_style" id="bar-style-sel"
+              onchange="cfg.status_bar_style=+this.value; applyBarVis()">
+        <option value="0">Animated wave</option>
+        <option value="1">Solid color</option>
         <option value="2">Off</option>
       </select>
-    </div>
-    <div class="row">
-      <label>Speed</label>
-      <select onchange="cfg.wave_speed = +this.value">
-        <option value="0">Slow (0.5×)</option>
-        <option value="1" selected>Normal (1×)</option>
-        <option value="2">Fast (2×)</option>
+    </label>
+    <label id="wave-speed-row">
+      Wave speed
+      <select name="wave_speed" onchange="cfg.wave_speed=+this.value">
+        <option value="0">Slow</option>
+        <option value="1" selected>Normal</option>
+        <option value="2">Fast</option>
       </select>
-    </div>
-    <div class="toggles">
-      <button class="toggle on" id="t-stars"   onclick="toggleCfg('show_stars')">Stars</button>
-      <button class="toggle on" id="t-seafoam" onclick="toggleCfg('show_seafoam')">Seafoam</button>
-    </div>
-  </section>
-
-  <section>
-    <h2>Alert Pulse</h2>
-    <div class="row">
-      <label>Speed</label>
-      <select onchange="cfg.pulse_speed = +this.value">
+    </label>
+    <label>
+      Alert pulse speed
+      <select name="pulse_speed" onchange="cfg.pulse_speed=+this.value">
         <option value="0">Slow (0.5 Hz)</option>
         <option value="1" selected>Normal (1 Hz)</option>
         <option value="2">Fast (2 Hz)</option>
       </select>
-    </div>
-    <div class="row">
-      <label>Min bright</label>
-      <input type="range" min="0" max="100" value="50"
-             oninput="cfg.pulse_min = +this.value; document.getElementById('pulse-min-val').textContent = this.value + '%'">
-      <span id="pulse-min-val" style="color:#555;width:32px;flex-shrink:0">50%</span>
-    </div>
+    </label>
+    <label>
+      Alert pulse minimum brightness (%)
+      <input name="pulse_min" type="number" min="0" max="90" step="5" value="50"
+             oninput="cfg.pulse_min=+this.value">
+    </label>
+    <label>
+      Sparkline
+      <select name="show_sparkline" onchange="cfg.show_sparkline=this.value==='true'">
+        <option value="true">Show</option>
+        <option value="false">Hide</option>
+      </select>
+    </label>
+    <label>
+      Sparkline range
+      <select name="sparkline_auto" onchange="cfg.sparkline_auto=this.value==='true'">
+        <option value="false">Fixed (40–400 mg/dL)</option>
+        <option value="true">Auto-fit</option>
+      </select>
+    </label>
+    <label>
+      Reading age indicator
+      <select name="show_age" onchange="cfg.show_age=this.value==='true'">
+        <option value="true">Show</option>
+        <option value="false">Hide</option>
+      </select>
+    </label>
+    <label>
+      Status label (HI / LO)
+      <select name="show_status_label" onchange="cfg.show_status_label=this.value==='true'">
+        <option value="true">Show</option>
+        <option value="false">Hide</option>
+      </select>
+    </label>
+    <label>
+      Auto-rotate with gyro
+      <select name="auto_rotate">
+        <option value="true">Enabled</option>
+        <option value="false">Disabled</option>
+      </select>
+    </label>
+    <label>
+      Twinkling stars
+      <select name="show_stars" onchange="cfg.show_stars=this.value==='true'">
+        <option value="true">On</option>
+        <option value="false">Off</option>
+      </select>
+    </label>
+    <label>
+      Wave seafoam
+      <select name="show_seafoam" onchange="cfg.show_seafoam=this.value==='true'">
+        <option value="true">On</option>
+        <option value="false">Off</option>
+      </select>
+    </label>
   </section>
 
+  <!-- Colors — mirrors device UI exactly -->
   <section>
-    <h2>Display</h2>
-    <div class="toggles">
-      <button class="toggle on" id="t-sparkline"  onclick="toggleCfg('show_sparkline')">Sparkline</button>
-      <button class="toggle"    id="t-spark-auto" onclick="toggleCfg('sparkline_auto')">Auto range</button>
-      <button class="toggle on" id="t-age"        onclick="toggleCfg('show_age')">Age</button>
-      <button class="toggle on" id="t-label"      onclick="toggleCfg('show_status_label')">Status label</button>
-      <button class="toggle"    id="t-24h"        onclick="toggleCfg('clock_24h')">24h clock</button>
+    <h2>Colors</h2>
+    <div class="row">
+      <label>
+        Alert (low / high)
+        <input name="color_low" type="color" value="#ff2200"
+               oninput="cfg.color_low=parseInt(this.value.slice(1),16)">
+      </label>
+      <label>
+        Warning threshold
+        <input name="color_warn" type="color" value="#ffcc00"
+               oninput="cfg.color_warn=parseInt(this.value.slice(1),16)">
+      </label>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <label>
+        In-range
+        <input name="color_ok" type="color" value="#00cc44"
+               oninput="cfg.color_ok=parseInt(this.value.slice(1),16)">
+      </label>
+      <label>
+        Wave base color
+        <input name="color_wave" type="color" value="#0035d2"
+               oninput="cfg.color_wave=parseInt(this.value.slice(1),16)">
+      </label>
     </div>
   </section>
 
-  <section>
-    <h2>Thresholds</h2>
-    <div class="row">
-      <label>Low alert</label>
-      <input type="number" class="wide" value="70"  oninput="cfg.glucose_low       = +this.value">
-    </div>
-    <div class="row">
-      <label>Warn low</label>
-      <input type="number" class="wide" value="80"  oninput="cfg.glucose_warn_low  = +this.value">
-    </div>
-    <div class="row">
-      <label>Warn high</label>
-      <input type="number" class="wide" value="160" oninput="cfg.glucose_warn_high = +this.value">
-    </div>
-    <div class="row">
-      <label>High alert</label>
-      <input type="number" class="wide" value="180" oninput="cfg.glucose_high      = +this.value">
-    </div>
-  </section>
-
-  <section>
-    <h2>Presets</h2>
-    <div class="presets">
-      <button class="preset-btn" style="color:#f77" onclick="setPreset(55,  7)">Low ↓↓</button>
-      <button class="preset-btn" style="color:#fb9" onclick="setPreset(75,  6)">Warn ↓</button>
-      <button class="preset-btn" style="color:#4db" onclick="setPreset(112, 4)">Normal →</button>
-      <button class="preset-btn" style="color:#fb9" onclick="setPreset(155, 3)">Warn ↑</button>
-      <button class="preset-btn" style="color:#f77" onclick="setPreset(220, 1)">High ↑↑</button>
-    </div>
-  </section>
-
-  <section>
-    <button id="copy-btn" onclick="copyConfig()">Copy Config JSON</button>
-    <div id="copy-toast"></div>
-  </section>
-
+  <button class="secondary" onclick="copyConfig()">Copy Config JSON</button>
+  <div id="copy-toast"></div>
 </div><!-- #controls -->
 
 <script>
-// ─────────────────────────────────────────────────────────────────────────────
-// Config — mirrors DashConfig defaults from include/config_store.h
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Config (mirrors DashConfig defaults) ─────────────────────────────────────
 const cfg = {
-  glucose_low:        70,
-  glucose_high:       180,
-  glucose_warn_low:   80,
-  glucose_warn_high:  160,
-  clock_24h:          false,
-  pulse_speed:        1,
-  pulse_min:          50,
-  wave_speed:         1,
-  status_bar_style:   0,
-  show_sparkline:     true,
-  sparkline_auto:     false,
-  show_age:           true,
-  show_status_label:  true,
-  show_stars:         true,
-  show_seafoam:       true,
-  color_low:          0xFF2200,
-  color_warn:         0xFFCC00,
-  color_ok:           0x00CC44,
-  color_wave:         0x0035D2,
+  glucose_low: 70, glucose_high: 180, glucose_warn_low: 80, glucose_warn_high: 160,
+  clock_24h: false, pulse_speed: 1, pulse_min: 50,
+  wave_speed: 1, status_bar_style: 0,
+  show_sparkline: true, sparkline_auto: false,
+  show_age: true, show_status_label: true,
+  show_stars: true, show_seafoam: true,
+  color_low: 0xFF2200, color_warn: 0xFFCC00, color_ok: 0x00CC44, color_wave: 0x0035D2,
 };
 
 const state = {
-  value_mgdl: 112,
-  trend_code: 4,
-  stale:      false,
-  error:      false,
-  flipped:    false,
-  sparkline:  [88, 92, 96, 101, 106, 109, 112, 115, 113, 111, 112, 110, 112],
+  value_mgdl: 112, trend_code: 4,
+  stale: false, error: false, flipped: false,
+  sparkline: [88,92,96,101,106,109,112,115,113,111,112,110,112],
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Canvas setup — offscreen 128×32, visible 768×192 (6× scale, pixelated)
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Canvas setup ──────────────────────────────────────────────────────────────
 const W = 128, H = 32;
 const visible = document.getElementById('c');
 const vctx = visible.getContext('2d');
 vctx.imageSmoothingEnabled = false;
-
 const off = document.createElement('canvas');
 off.width = W; off.height = H;
 const octx = off.getContext('2d');
-octx.imageSmoothingEnabled = false;
-
 let img = new ImageData(W, H);
-let px  = img.data;  // Uint8ClampedArray, 4 bytes per pixel
+let px  = img.data;
 
 function setPixel(x, y, r, g, b) {
   if (x < 0 || x >= W || y < 0 || y >= H) return;
   const i = (y * W + x) << 2;
-  px[i] = r;  px[i+1] = g;  px[i+2] = b;  px[i+3] = 255;
+  px[i] = r; px[i+1] = g; px[i+2] = b; px[i+3] = 255;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// px_hash — exact port of the C++ integer hash in display_renderer.cpp
-// Math.imul gives correct 32-bit integer multiplication (matches C++ int overflow).
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Pixel hash (exact port of C++ integer hash) ───────────────────────────────
 function pxHash(x, row, tSlot) {
-  let n = (Math.imul(x, 1619) + Math.imul(row, 31337) + Math.imul(tSlot, 3571)) >>> 0;
-  n ^= (n << 13);  n = n >>> 0;
-  n ^= (n >>> 17);
-  n ^= (n << 5);   n = n >>> 0;
+  let n = (Math.imul(x,1619) + Math.imul(row,31337) + Math.imul(tSlot,3571)) >>> 0;
+  n ^= (n << 13); n = n >>> 0; n ^= (n >>> 17); n ^= (n << 5); n = n >>> 0;
   return (n & 0xFFFF) / 65535.0;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Color helpers
-// ─────────────────────────────────────────────────────────────────────────────
-function unpack(rgb) {
-  return [(rgb >>> 16) & 0xFF, (rgb >>> 8) & 0xFF, rgb & 0xFF];
-}
+function unpack(rgb) { return [(rgb>>>16)&0xFF,(rgb>>>8)&0xFF,rgb&0xFF]; }
 
 function valueColor(mgdl) {
-  if (mgdl <= cfg.glucose_low  || mgdl >= cfg.glucose_high)       return unpack(cfg.color_low);
-  if (mgdl <= cfg.glucose_warn_low || mgdl >= cfg.glucose_warn_high) return unpack(cfg.color_warn);
+  if (mgdl <= cfg.glucose_low  || mgdl >= cfg.glucose_high)          return unpack(cfg.color_low);
+  if (mgdl <= cfg.glucose_warn_low || mgdl >= cfg.glucose_warn_high)  return unpack(cfg.color_warn);
   return unpack(cfg.color_ok);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Bresenham line — used for trend arrows
-// ─────────────────────────────────────────────────────────────────────────────
-function drawLine(x1, y1, x2, y2, r, g, b) {
-  let dx = Math.abs(x2-x1), dy = Math.abs(y2-y1);
-  let sx = x1 < x2 ? 1 : -1, sy = y1 < y2 ? 1 : -1, err = dx - dy;
-  for (;;) {
-    setPixel(x1, y1, r, g, b);
-    if (x1 === x2 && y1 === y2) break;
-    const e2 = 2 * err;
-    if (e2 > -dy) { err -= dy; x1 += sx; }
-    if (e2 <  dx) { err += dx; y1 += sy; }
+function drawLine(x1,y1,x2,y2,r,g,b) {
+  let dx=Math.abs(x2-x1),dy=Math.abs(y2-y1),sx=x1<x2?1:-1,sy=y1<y2?1:-1,err=dx-dy;
+  for(;;){setPixel(x1,y1,r,g,b);if(x1===x2&&y1===y2)break;
+    const e2=2*err;if(e2>-dy){err-=dy;x1+=sx;}if(e2<dx){err+=dx;y1+=sy;}}
+}
+
+// ── Adafruit GFX 5×7 bitmap font (column-major, bit0=top row) ────────────────
+// Full ASCII 0x20–0x7E. Each character is 5 bytes (one per column).
+const FONT = [
+  0x00,0x00,0x00,0x00,0x00, // 0x20 ' '
+  0x00,0x00,0x5F,0x00,0x00, // 0x21 '!'
+  0x00,0x07,0x00,0x07,0x00, // 0x22 '"'
+  0x14,0x7F,0x14,0x7F,0x14, // 0x23 '#'
+  0x24,0x2A,0x7F,0x2A,0x12, // 0x24 '$'
+  0x23,0x13,0x08,0x64,0x62, // 0x25 '%'
+  0x36,0x49,0x55,0x22,0x50, // 0x26 '&'
+  0x00,0x05,0x03,0x00,0x00, // 0x27 '\''
+  0x00,0x1C,0x22,0x41,0x00, // 0x28 '('
+  0x00,0x41,0x22,0x1C,0x00, // 0x29 ')'
+  0x14,0x08,0x3E,0x08,0x14, // 0x2A '*'
+  0x08,0x08,0x3E,0x08,0x08, // 0x2B '+'
+  0x00,0x50,0x30,0x00,0x00, // 0x2C ','
+  0x08,0x08,0x08,0x08,0x08, // 0x2D '-'
+  0x00,0x60,0x60,0x00,0x00, // 0x2E '.'
+  0x20,0x10,0x08,0x04,0x02, // 0x2F '/'
+  0x3E,0x51,0x49,0x45,0x3E, // 0x30 '0'
+  0x00,0x42,0x7F,0x40,0x00, // 0x31 '1'
+  0x42,0x61,0x51,0x49,0x46, // 0x32 '2'
+  0x21,0x41,0x45,0x4B,0x31, // 0x33 '3'
+  0x18,0x14,0x12,0x7F,0x10, // 0x34 '4'
+  0x27,0x45,0x45,0x45,0x39, // 0x35 '5'
+  0x3C,0x4A,0x49,0x49,0x30, // 0x36 '6'
+  0x01,0x71,0x09,0x05,0x03, // 0x37 '7'
+  0x36,0x49,0x49,0x49,0x36, // 0x38 '8'
+  0x06,0x49,0x49,0x29,0x1E, // 0x39 '9'
+  0x00,0x36,0x36,0x00,0x00, // 0x3A ':'
+  0x00,0x56,0x36,0x00,0x00, // 0x3B ';'
+  0x08,0x14,0x22,0x41,0x00, // 0x3C '<'
+  0x14,0x14,0x14,0x14,0x14, // 0x3D '='
+  0x00,0x41,0x22,0x14,0x08, // 0x3E '>'
+  0x02,0x01,0x51,0x09,0x06, // 0x3F '?'
+  0x32,0x49,0x79,0x41,0x3E, // 0x40 '@'
+  0x7E,0x11,0x11,0x11,0x7E, // 0x41 'A'
+  0x7F,0x49,0x49,0x49,0x36, // 0x42 'B'
+  0x3E,0x41,0x41,0x41,0x22, // 0x43 'C'
+  0x7F,0x41,0x41,0x22,0x1C, // 0x44 'D'
+  0x7F,0x49,0x49,0x49,0x41, // 0x45 'E'
+  0x7F,0x09,0x09,0x09,0x01, // 0x46 'F'
+  0x3E,0x41,0x49,0x49,0x7A, // 0x47 'G'
+  0x7F,0x08,0x08,0x08,0x7F, // 0x48 'H'
+  0x00,0x41,0x7F,0x41,0x00, // 0x49 'I'
+  0x20,0x40,0x41,0x3F,0x01, // 0x4A 'J'
+  0x7F,0x08,0x14,0x22,0x41, // 0x4B 'K'
+  0x7F,0x40,0x40,0x40,0x40, // 0x4C 'L'
+  0x7F,0x02,0x0C,0x02,0x7F, // 0x4D 'M'
+  0x7F,0x04,0x08,0x10,0x7F, // 0x4E 'N'
+  0x3E,0x41,0x41,0x41,0x3E, // 0x4F 'O'
+  0x7F,0x09,0x09,0x09,0x06, // 0x50 'P'
+  0x3E,0x41,0x51,0x21,0x5E, // 0x51 'Q'
+  0x7F,0x09,0x19,0x29,0x46, // 0x52 'R'
+  0x46,0x49,0x49,0x49,0x31, // 0x53 'S'
+  0x01,0x01,0x7F,0x01,0x01, // 0x54 'T'
+  0x3F,0x40,0x40,0x40,0x3F, // 0x55 'U'
+  0x1F,0x20,0x40,0x20,0x1F, // 0x56 'V'
+  0x3F,0x40,0x38,0x40,0x3F, // 0x57 'W'
+  0x63,0x14,0x08,0x14,0x63, // 0x58 'X'
+  0x07,0x08,0x70,0x08,0x07, // 0x59 'Y'
+  0x61,0x51,0x49,0x45,0x43, // 0x5A 'Z'
+  0x00,0x41,0x7F,0x40,0x00, // 0x5B '['
+  0x02,0x04,0x08,0x10,0x20, // 0x5C '\'
+  0x00,0x40,0x7F,0x41,0x00, // 0x5D ']'
+  0x04,0x02,0x01,0x02,0x04, // 0x5E '^'
+  0x40,0x40,0x40,0x40,0x40, // 0x5F '_'
+  0x00,0x01,0x02,0x04,0x00, // 0x60 '`'
+  0x20,0x54,0x54,0x54,0x78, // 0x61 'a'
+  0x7F,0x48,0x44,0x44,0x38, // 0x62 'b'
+  0x38,0x44,0x44,0x44,0x20, // 0x63 'c'
+  0x38,0x44,0x44,0x48,0x7F, // 0x64 'd'
+  0x38,0x54,0x54,0x54,0x18, // 0x65 'e'
+  0x08,0x7E,0x09,0x01,0x02, // 0x66 'f'
+  0x0C,0x52,0x52,0x52,0x3E, // 0x67 'g'
+  0x7F,0x08,0x04,0x04,0x78, // 0x68 'h'
+  0x00,0x44,0x7D,0x40,0x00, // 0x69 'i'
+  0x20,0x40,0x44,0x3D,0x00, // 0x6A 'j'
+  0x7F,0x10,0x28,0x44,0x00, // 0x6B 'k'
+  0x00,0x41,0x7F,0x40,0x00, // 0x6C 'l'
+  0x7C,0x04,0x18,0x04,0x78, // 0x6D 'm'
+  0x7C,0x08,0x04,0x04,0x78, // 0x6E 'n'
+  0x38,0x44,0x44,0x44,0x38, // 0x6F 'o'
+  0x7C,0x14,0x14,0x14,0x08, // 0x70 'p'
+  0x08,0x14,0x14,0x18,0x7C, // 0x71 'q'
+  0x7C,0x08,0x04,0x04,0x08, // 0x72 'r'
+  0x48,0x54,0x54,0x54,0x20, // 0x73 's'
+  0x04,0x3F,0x44,0x40,0x20, // 0x74 't'
+  0x3C,0x40,0x40,0x20,0x7C, // 0x75 'u'
+  0x1C,0x20,0x40,0x20,0x1C, // 0x76 'v'
+  0x3C,0x40,0x30,0x40,0x3C, // 0x77 'w'
+  0x44,0x28,0x10,0x28,0x44, // 0x78 'x'
+  0x0C,0x50,0x50,0x50,0x3C, // 0x79 'y'
+  0x44,0x64,0x54,0x4C,0x44, // 0x7A 'z'
+  0x00,0x08,0x36,0x41,0x00, // 0x7B '{'
+  0x00,0x00,0x7F,0x00,0x00, // 0x7C '|'
+  0x00,0x41,0x36,0x08,0x00, // 0x7D '}'
+  0x10,0x08,0x08,0x10,0x08, // 0x7E '~'
+];
+
+// Pixel-perfect text via bitmap font — no canvas text API, no antialiasing.
+function drawText(text, cx, cy, r, g, b, size) {
+  const s = size || 1;
+  let x = cx;
+  for (let ci = 0; ci < text.length; ci++) {
+    const code = text.charCodeAt(ci);
+    if (code < 0x20 || code > 0x7E) { x += 6 * s; continue; }
+    const base = (code - 0x20) * 5;
+    for (let col = 0; col < 5; col++) {
+      const bits = FONT[base + col];
+      for (let row = 0; row < 7; row++) {
+        if (bits & (1 << row)) {
+          for (let sy = 0; sy < s; sy++)
+            for (let sx = 0; sx < s; sx++)
+              setPixel(x + col * s + sx, cy + row * s + sy, r, g, b);
+        }
+      }
+    }
+    x += 6 * s;
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Stars — exact port of draw_sparkles_()
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Stars ─────────────────────────────────────────────────────────────────────
 function drawSparkles(t) {
   if (!cfg.show_stars) return;
   const tPos = Math.floor(t / 3000);
   for (let y = 1; y < 22; y++) {
     for (let x = 0; x < W; x++) {
       if (pxHash(x, y, tPos) < 0.008) {
-        const freq  = 0.002 + pxHash(x, y, tPos + 700) * 0.006;
-        const phase = pxHash(x, y, tPos + 300) * 6.2832;
+        const freq  = 0.002 + pxHash(x, y, tPos+700) * 0.006;
+        const phase = pxHash(x, y, tPos+300) * 6.2832;
         const bright = 0.25 + 0.75 * (Math.sin(t * freq + phase) * 0.5 + 0.5);
         const v = Math.round(bright * 230);
         setPixel(x, y, v, v, v);
@@ -345,9 +509,7 @@ function drawSparkles(t) {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Wave strip — exact port of draw_status_bar_()
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Wave strip ────────────────────────────────────────────────────────────────
 function drawStatusBar(sr, sg, sb, t) {
   const WAVE_Y = 22, WAVE_H = 10;
   if (cfg.status_bar_style === 2) return;
@@ -357,42 +519,34 @@ function drawStatusBar(sr, sg, sb, t) {
         setPixel(x, WAVE_Y + row, sr, sg, sb);
     return;
   }
-
   const t4    = Math.floor(t / 64);
   const speed = cfg.wave_speed === 0 ? 0.5 : cfg.wave_speed === 2 ? 2.0 : 1.0;
-  const wr = (cfg.color_wave >>> 16) & 0xFF;
-  const wg = (cfg.color_wave >>>  8) & 0xFF;
-  const wb =  cfg.color_wave         & 0xFF;
-
+  const wr = (cfg.color_wave>>>16)&0xFF, wg = (cfg.color_wave>>>8)&0xFF, wb = cfg.color_wave&0xFF;
   for (let x = 0; x < W; x++) {
     const ft = t * 0.001 * speed;
-    const wave = (Math.sin(x * 0.130 - ft * 3.00)
-                + Math.sin(x * 0.071 + ft * 2.10) * 0.55
-                + Math.sin(x * 0.211 - ft * 3.30) * 0.35
-                + Math.sin(x * 0.047 + ft * 1.40) * 0.25) / 2.15;
+    const wave = (Math.sin(x*0.130 - ft*3.00)
+                + Math.sin(x*0.071 + ft*2.10) * 0.55
+                + Math.sin(x*0.211 - ft*3.30) * 0.35
+                + Math.sin(x*0.047 + ft*1.40) * 0.25) / 2.15;
     const surface = 2.5 + 1.5 * wave;
-
     for (let row = 0; row < WAVE_H; row++) {
       const d = row - surface;
       let bright = d < 0
         ? 0.03 + 0.25 * Math.exp(d * 2.5)
         : 0.12 + 0.58 * Math.exp(-d * 0.55);
-
       const nd = Math.abs(d);
       if (nd < 2.5) bright += (pxHash(x, row, t4) - 0.5) * 0.12 * (1.0 - nd * 0.4);
       bright = Math.max(0, Math.min(1, bright));
-
       let r = Math.round(wr * bright);
       let g = Math.round(wg * bright);
       let b = Math.min(255, Math.round(wb * bright + 18.0 * (1.0 - bright)));
-
       if (cfg.show_seafoam && row === Math.floor(surface)) {
         const foam = pxHash(x, 88, Math.floor(t / 256));
         if (foam > 0.85) {
           const fi = (foam - 0.85) / 0.15;
-          r = Math.min(255, r + Math.round(200 * fi));
-          g = Math.min(255, g + Math.round(210 * fi));
-          b = Math.min(255, b + Math.round(100 * fi));
+          r = Math.min(255, r + Math.round(200*fi));
+          g = Math.min(255, g + Math.round(210*fi));
+          b = Math.min(255, b + Math.round(100*fi));
         }
       }
       setPixel(x, WAVE_Y + row, r, g, b);
@@ -400,174 +554,119 @@ function drawStatusBar(sr, sg, sb, t) {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Trend arrow — exact port of draw_trend_arrow_()
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Trend arrow ───────────────────────────────────────────────────────────────
 function drawTrendArrow(code, r, g, b) {
   const CX = 59, CY = 11;
-  if (code === 1) {   // DoubleUp
-    drawLine(CX-2,CY+4, CX-2,CY-4, r,g,b);
-    drawLine(CX-2,CY-4, CX-4,CY-2, r,g,b);
-    drawLine(CX-2,CY-4, CX,  CY-2, r,g,b);
-    drawLine(CX+2,CY+4, CX+2,CY-4, r,g,b);
-    drawLine(CX+2,CY-4, CX,  CY-2, r,g,b);
-    drawLine(CX+2,CY-4, CX+4,CY-2, r,g,b);
-    return;
+  if (code === 1) {
+    drawLine(CX-2,CY+4,CX-2,CY-4,r,g,b); drawLine(CX-2,CY-4,CX-4,CY-2,r,g,b);
+    drawLine(CX-2,CY-4,CX,CY-2,r,g,b);
+    drawLine(CX+2,CY+4,CX+2,CY-4,r,g,b); drawLine(CX+2,CY-4,CX,CY-2,r,g,b);
+    drawLine(CX+2,CY-4,CX+4,CY-2,r,g,b); return;
   }
-  if (code === 7) {   // DoubleDown
-    drawLine(CX-2,CY-4, CX-2,CY+4, r,g,b);
-    drawLine(CX-2,CY+4, CX-4,CY+2, r,g,b);
-    drawLine(CX-2,CY+4, CX,  CY+2, r,g,b);
-    drawLine(CX+2,CY-4, CX+2,CY+4, r,g,b);
-    drawLine(CX+2,CY+4, CX,  CY+2, r,g,b);
-    drawLine(CX+2,CY+4, CX+4,CY+2, r,g,b);
-    return;
+  if (code === 7) {
+    drawLine(CX-2,CY-4,CX-2,CY+4,r,g,b); drawLine(CX-2,CY+4,CX-4,CY+2,r,g,b);
+    drawLine(CX-2,CY+4,CX,CY+2,r,g,b);
+    drawLine(CX+2,CY-4,CX+2,CY+4,r,g,b); drawLine(CX+2,CY+4,CX,CY+2,r,g,b);
+    drawLine(CX+2,CY+4,CX+4,CY+2,r,g,b); return;
   }
-  let x1, y1, x2, y2, hx1, hy1, hx2, hy2;
-  switch (code) {
-    case 2: [x1,y1,x2,y2]=[CX,CY+4,CX,CY-4];           [hx1,hy1,hx2,hy2]=[CX-3,CY-1,CX+3,CY-1]; break;
-    case 6: [x1,y1,x2,y2]=[CX,CY-4,CX,CY+4];           [hx1,hy1,hx2,hy2]=[CX-3,CY+1,CX+3,CY+1]; break;
-    case 3: [x1,y1,x2,y2]=[CX-3,CY+3,CX+3,CY-3];       [hx1,hy1,hx2,hy2]=[CX,CY-3,CX+3,CY];     break;
-    case 5: [x1,y1,x2,y2]=[CX-3,CY-3,CX+3,CY+3];       [hx1,hy1,hx2,hy2]=[CX,CY+3,CX+3,CY];     break;
-    default:[x1,y1,x2,y2]=[CX-4,CY,CX+4,CY];           [hx1,hy1,hx2,hy2]=[CX+1,CY-3,CX+1,CY+3];
+  let x1,y1,x2,y2,hx1,hy1,hx2,hy2;
+  switch(code){
+    case 2:[x1,y1,x2,y2]=[CX,CY+4,CX,CY-4];           [hx1,hy1,hx2,hy2]=[CX-3,CY-1,CX+3,CY-1]; break;
+    case 6:[x1,y1,x2,y2]=[CX,CY-4,CX,CY+4];           [hx1,hy1,hx2,hy2]=[CX-3,CY+1,CX+3,CY+1]; break;
+    case 3:[x1,y1,x2,y2]=[CX-3,CY+3,CX+3,CY-3];       [hx1,hy1,hx2,hy2]=[CX,CY-3,CX+3,CY];     break;
+    case 5:[x1,y1,x2,y2]=[CX-3,CY-3,CX+3,CY+3];       [hx1,hy1,hx2,hy2]=[CX,CY+3,CX+3,CY];     break;
+    default:[x1,y1,x2,y2]=[CX-4,CY,CX+4,CY];          [hx1,hy1,hx2,hy2]=[CX+1,CY-3,CX+1,CY+3];
   }
   drawLine(x1,y1,x2,y2,r,g,b);
   drawLine(x2,y2,hx1,hy1,r,g,b);
   drawLine(x2,y2,hx2,hy2,r,g,b);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Sparkline — exact port of draw_sparkline_()
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Sparkline ─────────────────────────────────────────────────────────────────
 function drawSparkline(spark) {
   if (!cfg.show_sparkline || spark.length === 0) return;
-  const X0=88, Y0=2, HEIGHT=20, WIDTH=40, BAR_W=3;
-  const count  = Math.min(spark.length, Math.floor(WIDTH / BAR_W));
+  const X0=88,Y0=2,HEIGHT=20,WIDTH=40,BAR_W=3;
+  const count  = Math.min(spark.length, Math.floor(WIDTH/BAR_W));
   const startI = spark.length > count ? spark.length - count : 0;
-
-  let lo = 40, hi = 400;
+  let lo=40,hi=400;
   if (cfg.sparkline_auto && count > 0) {
-    let mn = spark[startI], mx = spark[startI];
-    for (let i = startI + 1; i < startI + count; i++) {
-      if (spark[i] < mn) mn = spark[i];
-      if (spark[i] > mx) mx = spark[i];
-    }
-    const rng = Math.max(20, mx - mn);
-    const pad = Math.max(5, Math.floor(rng / 5));
-    lo = Math.max(40,  mn - pad);
-    hi = Math.min(400, mx + pad);
+    let mn=spark[startI],mx=spark[startI];
+    for(let i=startI+1;i<startI+count;i++){if(spark[i]<mn)mn=spark[i];if(spark[i]>mx)mx=spark[i];}
+    const rng=Math.max(20,mx-mn),pad=Math.max(5,Math.floor(rng/5));
+    lo=Math.max(40,mn-pad); hi=Math.min(400,mx+pad);
   }
-
-  const yFor = v => Y0 + HEIGHT - 1 -
-    Math.round((Math.min(hi, Math.max(lo, v)) - lo) / (hi - lo) * (HEIGHT - 1));
-
-  for (let x = X0; x < X0 + WIDTH; x++) {
-    setPixel(x, yFor(cfg.glucose_warn_low),  40, 40, 40);
-    setPixel(x, yFor(cfg.glucose_warn_high), 40, 40, 40);
+  const yFor = v => Y0+HEIGHT-1-Math.round((Math.min(hi,Math.max(lo,v))-lo)/(hi-lo)*(HEIGHT-1));
+  for(let x=X0;x<X0+WIDTH;x++){
+    setPixel(x,yFor(cfg.glucose_warn_low),40,40,40);
+    setPixel(x,yFor(cfg.glucose_warn_high),40,40,40);
   }
-
-  for (let i = 0; i < count; i++) {
-    const mgdl    = spark[startI + i];
-    const clamped = Math.min(hi, Math.max(lo, mgdl));
-    const barH    = Math.max(1, Math.round((clamped - lo) / (hi - lo) * (HEIGHT - 1)) + 1);
-    const bx      = X0 + i * BAR_W;
-    const by      = Y0 + HEIGHT - barH;
-    const [r,g,b] = valueColor(mgdl);
-    for (let dy = 0; dy < barH; dy++)
-      for (let dx = 0; dx < BAR_W - 1; dx++)
-        setPixel(bx + dx, by + dy, r, g, b);
+  for(let i=0;i<count;i++){
+    const mgdl=spark[startI+i];
+    const clamped=Math.min(hi,Math.max(lo,mgdl));
+    const barH=Math.max(1,Math.round((clamped-lo)/(hi-lo)*(HEIGHT-1))+1);
+    const bx=X0+i*BAR_W,by=Y0+HEIGHT-barH;
+    const [r,g,b]=valueColor(mgdl);
+    for(let dy=0;dy<barH;dy++) for(let dx=0;dx<BAR_W-1;dx++) setPixel(bx+dx,by+dy,r,g,b);
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Text — drawn on the offscreen canvas after ImageData is committed.
-// Uses canvas 2D API so we avoid expensive getImageData round-trips.
-// Size 2: 2× scaled Courier New to approximate Adafruit 5×7 @ textSize=2.
-// ─────────────────────────────────────────────────────────────────────────────
-function drawText(text, cx, cy, r, g, b, size) {
-  octx.fillStyle = `rgb(${r},${g},${b})`;
-  octx.textBaseline = 'top';
-  if (size === 2) {
-    octx.save();
-    octx.scale(2, 2);
-    octx.font = '7px "Courier New",monospace';
-    octx.fillText(text, cx / 2, cy / 2);
-    octx.restore();
-  } else {
-    octx.font = '7px "Courier New",monospace';
-    octx.fillText(text, cx, cy);
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Main render loop — ~20 fps
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Render loop (~20 fps) ─────────────────────────────────────────────────────
 const startTime = performance.now();
-let lastFrame = 0, fpsCount = 0, fpsLast = performance.now();
+let lastFrame=0, fpsCount=0, fpsLast=performance.now();
 
 function render(now) {
   requestAnimationFrame(render);
   if (now - lastFrame < 50) return;
   lastFrame = now;
-
   fpsCount++;
   if (now - fpsLast >= 1000) {
-    document.getElementById('fps').textContent = `fps: ${fpsCount}`;
-    fpsCount = 0; fpsLast = now;
+    document.getElementById('fps-ver').textContent = `fps: ${fpsCount}  ·  v__VERSION__`;
+    fpsCount=0; fpsLast=now;
   }
-
   const t = now - startTime;
 
-  // ── 1. Clear pixels ──
+  // 1. Clear pixel buffer
   px.fill(0);
-  for (let i = 3; i < px.length; i += 4) px[i] = 255;
+  for (let i=3; i<px.length; i+=4) px[i]=255;
 
   const mgdl         = state.value_mgdl;
-  const [cr, cg, cb] = valueColor(mgdl);
+  const [cr,cg,cb]   = valueColor(mgdl);
   const alert        = mgdl <= cfg.glucose_low || mgdl >= cfg.glucose_high;
-  const [lr, lg, lb] = unpack(cfg.color_low);
+  const [lr,lg,lb]   = unpack(cfg.color_low);
 
-  // ── 2. Stars (behind all content) ──
+  // 2. Stars
   drawSparkles(t);
 
   if (!state.error) {
-    // ── 3. Sparkline + arrow ──
+    // 3. Sparkline + arrow
     drawSparkline(state.sparkline);
     drawTrendArrow(state.trend_code, cr, cg, cb);
-
-    // ── 4. Wave — solid_color arg used only in solid/off modes ──
+    // 4. Wave
     drawStatusBar(cr, cg, cb, t);
   } else {
     drawStatusBar(lr, lg, lb, t);
   }
 
-  // ── 5. Commit ImageData → offscreen ──
-  octx.putImageData(img, 0, 0);
-
-  // ── 6. Text on offscreen (on top of pixel content) ──
+  // 5. Text — all drawn into pixel buffer (bitmap font, zero antialiasing)
   if (!state.error) {
-    // Glucose with alert pulse
-    let [gr, gg, gb] = [cr, cg, cb];
+    let [gr,gg,gb] = [cr,cg,cb];
     if (alert) {
-      const freq  = cfg.pulse_speed === 0 ? 0.003142 : cfg.pulse_speed === 2 ? 0.012566 : 0.006283;
-      const minF  = cfg.pulse_min / 100.0;
-      const mid   = (1.0 + minF) * 0.5;
-      const amp   = (1.0 - minF) * 0.5;
-      const pulse = mid + amp * Math.sin(t * freq);
-      gr = Math.min(255, Math.round(cr * pulse));
-      gg = Math.min(255, Math.round(cg * pulse));
-      gb = Math.min(255, Math.round(cb * pulse));
+      const freq = cfg.pulse_speed===0 ? 0.003142 : cfg.pulse_speed===2 ? 0.012566 : 0.006283;
+      const minF = cfg.pulse_min/100.0;
+      const pulse = (1+minF)*0.5 + (1-minF)*0.5*Math.sin(t*freq);
+      gr=Math.min(255,Math.round(cr*pulse));
+      gg=Math.min(255,Math.round(cg*pulse));
+      gb=Math.min(255,Math.round(cb*pulse));
     }
     drawText(String(mgdl), 1, 3, gr, gg, gb, 2);
 
-    if (cfg.show_age)
-      drawText('5m', 71, 3, 160, 160, 160, 1);
+    if (cfg.show_age) drawText('5m', 71, 3, 160, 160, 160, 1);
 
     if (cfg.show_status_label) {
-      if      (mgdl <= cfg.glucose_low)            drawText('LO',  71, 13, 255,  34,   0, 1);
-      else if (mgdl >= cfg.glucose_high)           drawText('HI',  71, 13, 255,  34,   0, 1);
-      else if (mgdl <= cfg.glucose_warn_low)       drawText('LO?', 71, 13, 255, 204,   0, 1);
-      else if (mgdl >= cfg.glucose_warn_high)      drawText('HI?', 71, 13, 255, 204,   0, 1);
+      if      (mgdl <= cfg.glucose_low)           drawText('LO',  71,13,255, 34,  0,1);
+      else if (mgdl >= cfg.glucose_high)          drawText('HI',  71,13,255, 34,  0,1);
+      else if (mgdl <= cfg.glucose_warn_low)      drawText('LO?', 71,13,255,204,  0,1);
+      else if (mgdl >= cfg.glucose_warn_high)     drawText('HI?', 71,13,255,204,  0,1);
     }
 
     if (state.stale) {
@@ -576,10 +675,10 @@ function render(now) {
       const d = new Date();
       let ts;
       if (cfg.clock_24h) {
-        ts = String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+        ts = String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
       } else {
-        const h = d.getHours() % 12 || 12;
-        ts = `${h}:${String(d.getMinutes()).padStart(2,'0')} ${d.getHours() < 12 ? 'AM' : 'PM'}`;
+        const h = d.getHours()%12||12;
+        ts = `${h}:${String(d.getMinutes()).padStart(2,'0')} ${d.getHours()<12?'AM':'PM'}`;
       }
       drawText(ts, 2, 24, 220, 220, 220, 1);
     }
@@ -587,131 +686,86 @@ function render(now) {
     drawText('ERROR', 2, 24, 255, 80, 60, 1);
   }
 
-  // ── 7. Scale offscreen → visible (6×), with optional 180° flip ──
+  // 6. Commit pixel buffer → offscreen canvas
+  octx.putImageData(img, 0, 0);
+
+  // 7. Scale offscreen → visible (6×), optional 180° flip
   vctx.imageSmoothingEnabled = false;
   if (state.flipped) {
-    vctx.save();
-    vctx.translate(768, 192);
-    vctx.rotate(Math.PI);
-    vctx.drawImage(off, 0, 0, 768, 192);
-    vctx.restore();
+    vctx.save(); vctx.translate(768,192); vctx.rotate(Math.PI);
+    vctx.drawImage(off,0,0,768,192); vctx.restore();
   } else {
-    vctx.drawImage(off, 0, 0, 768, 192);
+    vctx.drawImage(off,0,0,768,192);
   }
 }
 
 requestAnimationFrame(render);
 
-// ─────────────────────────────────────────────────────────────────────────────
-// UI event handlers
-// ─────────────────────────────────────────────────────────────────────────────
+// ── UI handlers ───────────────────────────────────────────────────────────────
 function onGlucoseRange(v) {
-  state.value_mgdl = +v;
-  document.getElementById('glucose-num').value = v;
-  pushSparkline(+v);
+  state.value_mgdl=+v; document.getElementById('glucose-num').value=v; pushSparkline(+v);
 }
 function onGlucoseNum(v) {
-  const clamped = Math.min(400, Math.max(40, +v || 40));
-  state.value_mgdl = clamped;
-  document.getElementById('glucose-range').value = clamped;
-  pushSparkline(clamped);
+  const c=Math.min(400,Math.max(40,+v||40)); state.value_mgdl=c;
+  document.getElementById('glucose-range').value=c; pushSparkline(c);
 }
 function pushSparkline(v) {
-  state.sparkline.push(v);
-  if (state.sparkline.length > 13) state.sparkline.shift();
+  state.sparkline.push(v); if(state.sparkline.length>13) state.sparkline.shift();
 }
-
 function toggleState(key) {
-  state[key] = !state[key];
+  state[key]=!state[key];
   document.getElementById({stale:'t-stale',error:'t-error',flipped:'t-flip'}[key])
-          .classList.toggle('on', state[key]);
+          .classList.toggle('on',state[key]);
 }
-function toggleCfg(key) {
-  cfg[key] = !cfg[key];
-  const map = {
-    show_stars:'t-stars', show_seafoam:'t-seafoam',
-    show_sparkline:'t-sparkline', sparkline_auto:'t-spark-auto',
-    show_age:'t-age', show_status_label:'t-label', clock_24h:'t-24h',
-  };
-  if (map[key]) document.getElementById(map[key]).classList.toggle('on', cfg[key]);
+function applyBarVis() {
+  document.getElementById('wave-speed-row').style.display =
+    cfg.status_bar_style===0 ? '' : 'none';
 }
-function onColor(key, hex) {
-  cfg[key] = parseInt(hex.slice(1), 16);
-  document.getElementById({color_low:'c-low-hex',color_warn:'c-warn-hex',
-                            color_ok:'c-ok-hex',color_wave:'c-wave-hex'}[key])
-          .textContent = hex;
-}
-
-function setPreset(mgdl, trend) {
-  state.value_mgdl = mgdl;
-  state.trend_code = trend;
-  state.stale = false;
-  state.error = false;
-  document.getElementById('glucose-range').value = mgdl;
-  document.getElementById('glucose-num').value   = mgdl;
+function setPreset(mgdl,trend) {
+  state.value_mgdl=mgdl; state.trend_code=trend; state.stale=false; state.error=false;
+  document.getElementById('glucose-range').value=mgdl;
+  document.getElementById('glucose-num').value=mgdl;
   document.getElementById('t-stale').classList.remove('on');
   document.getElementById('t-error').classList.remove('on');
-  updateTrendButtons();
-  pushSparkline(mgdl);
+  updateTrendButtons(); pushSparkline(mgdl);
 }
-
 function copyConfig() {
-  const hex = v => '#' + (v & 0xFFFFFF).toString(16).padStart(6,'0');
+  const hex = v => '#'+(v&0xFFFFFF).toString(16).padStart(6,'0');
   const out = {
-    color_low:          hex(cfg.color_low),
-    color_warn:         hex(cfg.color_warn),
-    color_ok:           hex(cfg.color_ok),
-    color_wave:         hex(cfg.color_wave),
-    wave_speed:         cfg.wave_speed,
-    status_bar_style:   cfg.status_bar_style,
-    show_stars:         cfg.show_stars,
-    show_seafoam:       cfg.show_seafoam,
-    show_sparkline:     cfg.show_sparkline,
-    sparkline_auto:     cfg.sparkline_auto,
-    clock_24h:          cfg.clock_24h,
-    show_age:           cfg.show_age,
-    show_status_label:  cfg.show_status_label,
-    pulse_speed:        cfg.pulse_speed,
-    pulse_min:          cfg.pulse_min,
-    glucose_low:        cfg.glucose_low,
-    glucose_high:       cfg.glucose_high,
-    glucose_warn_low:   cfg.glucose_warn_low,
-    glucose_warn_high:  cfg.glucose_warn_high,
+    color_low:hex(cfg.color_low), color_warn:hex(cfg.color_warn),
+    color_ok:hex(cfg.color_ok),   color_wave:hex(cfg.color_wave),
+    wave_speed:cfg.wave_speed, status_bar_style:cfg.status_bar_style,
+    show_stars:cfg.show_stars, show_seafoam:cfg.show_seafoam,
+    show_sparkline:cfg.show_sparkline, sparkline_auto:cfg.sparkline_auto,
+    clock_24h:cfg.clock_24h, show_age:cfg.show_age,
+    show_status_label:cfg.show_status_label,
+    pulse_speed:cfg.pulse_speed, pulse_min:cfg.pulse_min,
+    glucose_low:cfg.glucose_low, glucose_high:cfg.glucose_high,
+    glucose_warn_low:cfg.glucose_warn_low, glucose_warn_high:cfg.glucose_warn_high,
   };
-  navigator.clipboard.writeText(JSON.stringify(out, null, 2)).catch(() => {
-    prompt('Copy this config JSON:', JSON.stringify(out, null, 2));
+  navigator.clipboard.writeText(JSON.stringify(out,null,2)).catch(()=>{
+    prompt('Copy this config JSON:',JSON.stringify(out,null,2));
   });
-  const toast = document.getElementById('copy-toast');
-  toast.textContent = 'Copied to clipboard!';
-  setTimeout(() => toast.textContent = '', 2000);
+  const toast=document.getElementById('copy-toast');
+  toast.textContent='Copied to clipboard!';
+  setTimeout(()=>toast.textContent='',2000);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Trend buttons
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Trend buttons ─────────────────────────────────────────────────────────────
 const TREND_LABELS = [
-  [1, '↑↑ DblUp'],
-  [2, '↑ SingleUp'],
-  [3, '↗ 45Up'],
-  [4, '→ Flat'],
-  [5, '↘ 45Down'],
-  [6, '↓ SingleDn'],
-  [7, '↓↓ DblDn'],
-  [0, '? None'],
+  [1,'↑↑ DblUp'],[2,'↑ SingleUp'],[3,'↗ 45Up'],[4,'→ Flat'],
+  [5,'↘ 45Dn'],[6,'↓ SingleDn'],[7,'↓↓ DblDn'],[0,'? None'],
 ];
-
 function updateTrendButtons() {
-  document.querySelectorAll('.trend-btn').forEach(b =>
-    b.classList.toggle('active', +b.dataset.code === state.trend_code));
+  document.querySelectorAll('.trend-btn').forEach(b=>
+    b.classList.toggle('active',+b.dataset.code===state.trend_code));
 }
-
-const trendGrid = document.getElementById('trend-grid');
-TREND_LABELS.forEach(([code, label]) => {
-  const btn = document.createElement('button');
-  btn.className = 'trend-btn' + (code === state.trend_code ? ' active' : '');
-  btn.dataset.code = code;
-  btn.textContent  = label;
-  btn.onclick = () => { state.trend_code = code; updateTrendButtons(); };
+const trendGrid=document.getElementById('trend-grid');
+TREND_LABELS.forEach(([code,label])=>{
+  const btn=document.createElement('button');
+  btn.className='trend-btn'+(code===state.trend_code?' active':'');
+  btn.dataset.code=code; btn.textContent=label;
+  btn.onclick=()=>{state.trend_code=code;updateTrendButtons();};
   trendGrid.appendChild(btn);
 });
 </script>

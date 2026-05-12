@@ -2,6 +2,7 @@ name: Build
 
 on:
   push:
+    branches: [main]
   workflow_dispatch:
 
 jobs:
@@ -9,16 +10,19 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
 
     steps:
       - uses: actions/checkout@v4
         with:
-          # Full token auth so the commit-back push step works.
           token: ${{ secrets.GITHUB_TOKEN }}
           persist-credentials: true
 
-      # Cache PlatformIO toolchains and library downloads.
-      # Key includes platformio.ini so a lib_deps change busts the cache.
       - uses: actions/cache@v4
         with:
           path: |
@@ -47,12 +51,20 @@ jobs:
           cp .pio/build/matrix-portal-s3/bootloader.bin installer/bootloader.bin
           cp .pio/build/matrix-portal-s3/partitions.bin installer/partitions.bin
 
-      # Commit updated binaries back to the branch so the web installer
-      # always reflects the latest code. Only runs on direct branch pushes —
-      # not on PRs (read-only token) and not on main.
-      # Pushes made with GITHUB_TOKEN do not re-trigger workflows.
-      - name: Commit updated installer binaries
-        if: github.event_name == 'push' && github.ref != 'refs/heads/main'
+      - name: Inject version into manifests and HTML
+        run: |
+          VERSION="$(date -u +%Y%m%d)-$(git rev-parse --short HEAD)"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+          # Update manifest versions
+          jq --arg v "$VERSION" '.version = $v' installer/manifest.json        > /tmp/m1.json && mv /tmp/m1.json installer/manifest.json
+          jq --arg v "$VERSION" '.version = $v' installer/manifest-update.json > /tmp/m2.json && mv /tmp/m2.json installer/manifest-update.json
+
+          # Stamp version placeholder in installer and sim pages
+          sed -i "s/__VERSION__/$VERSION/g" installer/index.html
+          sed -i "s/__VERSION__/$VERSION/g" sim/index.html
+
+      - name: Commit updated installer binaries and stamped files
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -61,9 +73,20 @@ jobs:
           git remote set-url origin \
             https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}
           git add installer/firmware.bin installer/littlefs.bin \
-                  installer/bootloader.bin installer/partitions.bin
+                  installer/bootloader.bin installer/partitions.bin \
+                  installer/manifest.json installer/manifest-update.json \
+                  installer/index.html sim/index.html
           git diff --cached --quiet \
-            && echo "Binaries unchanged, nothing to commit." \
+            && echo "Nothing changed, skipping commit." \
             && exit 0
-          git commit -m "ci: rebuild installer binaries [skip ci]"
-          git push origin HEAD:${{ github.ref_name }}
+          git commit -m "ci: rebuild binaries v${VERSION} [skip ci]"
+          git push origin HEAD:main
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: installer/
+
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4

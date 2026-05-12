@@ -109,13 +109,13 @@
   <div id="display-frame">
     <canvas id="c" width="768" height="192"></canvas>
   </div>
-  <div id="fps-ver">fps: -- &nbsp;·&nbsp; v__VERSION__</div>
+  <div id="fps-ver">fps: -- &nbsp;·&nbsp; v20260512-5afcb13</div>
 </div>
 
 <div id="controls">
   <header>
     <h1>Diabetic Dash</h1>
-    <p class="subtitle">Simulator — v__VERSION__</p>
+    <p class="subtitle">Simulator — v20260512-5afcb13</p>
   </header>
 
   <!-- Simulator state (not on real device) -->
@@ -620,7 +620,7 @@ function render(now) {
   lastFrame = now;
   fpsCount++;
   if (now - fpsLast >= 1000) {
-    document.getElementById('fps-ver').textContent = `fps: ${fpsCount}  ·  v__VERSION__`;
+    document.getElementById('fps-ver').textContent = `fps: ${fpsCount}  ·  v20260512-5afcb13`;
     fpsCount=0; fpsLast=now;
   }
   const t = now - startTime;

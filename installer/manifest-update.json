@@ -1,13 +1,22 @@
 {
   "name": "Diabetic Dash",
-  "version": "1.0.0",
+  "version": "20260512-5afcb13",
   "builds": [
     {
       "chipFamily": "ESP32-S3",
       "parts": [
-        { "path": "ota_data_initial.bin", "offset": 57344   },
-        { "path": "firmware.bin",         "offset": 65536   },
-        { "path": "littlefs.bin",         "offset": 6750208 }
+        {
+          "path": "ota_data_initial.bin",
+          "offset": 57344
+        },
+        {
+          "path": "firmware.bin",
+          "offset": 65536
+        },
+        {
+          "path": "littlefs.bin",
+          "offset": 6750208
+        }
       ]
     }
   ]

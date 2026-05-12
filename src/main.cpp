@@ -133,6 +133,7 @@ void setup() {
 
   // Fetch immediately on boot rather than waiting POLL_INTERVAL_MS.
   source->fetch(cgm_data);
+  web_server->push_status(cgm_data.valid, cgm_data.error, cgm_data.current.value_mgdl);
   renderer.draw(cgm_data, config);
   last_fetch_ms = millis();
   last_draw_ms  = millis();
@@ -205,6 +206,7 @@ void loop() {
 
     if (WiFi.status() == WL_CONNECTED) {
       source->fetch(cgm_data);
+      web_server->push_status(cgm_data.valid, cgm_data.error, cgm_data.current.value_mgdl);
     }
 
     last_fetch_ms = now;

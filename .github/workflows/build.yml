@@ -1,0 +1,69 @@
+name: Build
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full token auth so the commit-back push step works.
+          token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: true
+
+      # Cache PlatformIO toolchains and library downloads.
+      # Key includes platformio.ini so a lib_deps change busts the cache.
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.platformio
+            ~/.cache/pip
+          key: ${{ runner.os }}-pio-${{ hashFiles('platformio.ini') }}
+          restore-keys: ${{ runner.os }}-pio-
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install PlatformIO
+        run: pip install platformio
+
+      - name: Build firmware
+        run: pio run
+
+      - name: Build LittleFS filesystem image
+        run: pio run --target buildfs
+
+      - name: Copy artifacts to installer/
+        run: |
+          cp .pio/build/matrix-portal-s3/firmware.bin   installer/firmware.bin
+          cp .pio/build/matrix-portal-s3/littlefs.bin   installer/littlefs.bin
+          cp .pio/build/matrix-portal-s3/bootloader.bin installer/bootloader.bin
+          cp .pio/build/matrix-portal-s3/partitions.bin installer/partitions.bin
+
+      # Commit updated binaries back to the branch so the web installer
+      # always reflects the latest code. Only runs on direct branch pushes —
+      # not on PRs (read-only token) and not on main.
+      # Pushes made with GITHUB_TOKEN do not re-trigger workflows.
+      - name: Commit updated installer binaries
+        if: github.event_name == 'push' && github.ref != 'refs/heads/main'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin \
+            https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}
+          git add installer/firmware.bin installer/littlefs.bin \
+                  installer/bootloader.bin installer/partitions.bin
+          git diff --cached --quiet \
+            && echo "Binaries unchanged, nothing to commit." \
+            && exit 0
+          git commit -m "ci: rebuild installer binaries [skip ci]"
+          git push origin HEAD:${{ github.ref_name }}

@@ -1,8 +1,19 @@
 #include "dexcom_source.h"
 #include <WiFiClientSecure.h>
+#include <WiFiClient.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 #include <time.h>
+
+// TCP probe to Cloudflare DNS (1.1.1.1:80) — fast, no TLS, no DNS needed.
+// Returns true if a basic internet path exists.
+static bool check_internet_() {
+  WiFiClient client;
+  client.setTimeout(3000);
+  bool ok = client.connect(IPAddress(1, 1, 1, 1), 80);
+  if (ok) client.stop();
+  return ok;
+}
 
 DexcomSource::DexcomSource(const DashConfig &config) {
   username_ = config.dexcom_username;
@@ -63,10 +74,10 @@ String DexcomSource::http_post_(const String &url, const String &body) {
   return resp;
 }
 
-bool DexcomSource::authenticate_() {
+bool DexcomSource::authenticate_(CGMData &out) {
   JsonDocument req;
-  req["accountName"]  = username_;
-  req["password"]     = password_;
+  req["accountName"]   = username_;
+  req["password"]      = password_;
   req["applicationId"] = APP_ID;
   String body;
   serializeJson(req, body);
@@ -77,23 +88,29 @@ bool DexcomSource::authenticate_() {
 
   if (resp.startsWith("ERR:")) {
     Serial.println("[Dexcom] authenticate failed: " + resp);
+    out.valid = false;
+    // Negative HTTP code = connection-level failure (timeout, refused, etc.).
+    // Probe 1.1.1.1 to distinguish "no internet" from a Dexcom-specific error.
+    long code = strtol(resp.c_str() + 4, nullptr, 10);
+    out.error = (code <= 0 && !check_internet_()) ? "No internet" : "Auth: " + resp;
     return false;
   }
-  // Response is a bare quoted UUID: "xxxxxxxx-xxxx-..."
   resp.replace("\"", "");
   resp.trim();
   if (resp.length() < 10) {
     Serial.println("[Dexcom] unexpected account_id: " + resp);
+    out.valid = false;
+    out.error = "Auth: bad account_id: " + resp;
     return false;
   }
   account_id_ = resp;
   return true;
 }
 
-bool DexcomSource::login_() {
+bool DexcomSource::login_(CGMData &out) {
   JsonDocument req;
-  req["accountId"]    = account_id_;
-  req["password"]     = password_;
+  req["accountId"]     = account_id_;
+  req["password"]      = password_;
   req["applicationId"] = APP_ID;
   String body;
   serializeJson(req, body);
@@ -104,12 +121,16 @@ bool DexcomSource::login_() {
 
   if (resp.startsWith("ERR:")) {
     Serial.println("[Dexcom] login failed: " + resp);
+    out.valid = false;
+    out.error = "Login: " + resp;
     return false;
   }
   resp.replace("\"", "");
   resp.trim();
   if (resp.length() < 10) {
     Serial.println("[Dexcom] unexpected session_id: " + resp);
+    out.valid = false;
+    out.error = "Login: bad session_id: " + resp;
     return false;
   }
   session_id_ = resp;
@@ -173,26 +194,15 @@ bool DexcomSource::fetch(CGMData &out) {
   }
 
   // Authenticate if we don't have credentials yet.
-  if (account_id_.isEmpty() && !authenticate_()) {
-    out.valid = false;
-    out.error = "Auth failed";
-    return false;
-  }
-  if (session_id_.isEmpty() && !login_()) {
-    out.valid = false;
-    out.error = "Login failed";
-    return false;
-  }
+  // authenticate_() and login_() set out.error with the actual HTTP response.
+  if (account_id_.isEmpty() && !authenticate_(out)) return false;
+  if (session_id_.isEmpty()  && !login_(out))       return false;
 
   // Fetch readings; retry once if the session expired mid-flight.
   bool ok = read_glucose_(out);
   if (!ok && session_id_.isEmpty()) {
     Serial.println("[Dexcom] session expired, re-authenticating");
-    if (!authenticate_() || !login_()) {
-      out.valid = false;
-      out.error = "Re-auth failed";
-      return false;
-    }
+    if (!authenticate_(out) || !login_(out)) return false;
     ok = read_glucose_(out);
   }
 

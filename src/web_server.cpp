@@ -194,6 +194,8 @@ void DashWebServer::begin() {
       "button{background:#2a7;color:#fff;cursor:pointer;font-size:1em}"
       "button:disabled{background:#1a4a2a;color:#555;cursor:default}"
       "#status{margin-top:12px;font-size:.9em;min-height:1.2em}"
+      "#bar-wrap{background:#222;border-radius:4px;height:6px;margin:8px 0;display:none}"
+      "#bar{background:#2a7;height:6px;border-radius:4px;width:0%;transition:width .2s}"
       ".err{color:#f66}.ok{color:#6f6}"
       "a{color:#888}"
       "</style></head><body>"
@@ -201,33 +203,58 @@ void DashWebServer::begin() {
       "<p>Select firmware.bin — credentials and settings are preserved.</p>"
       "<input type='file' id='f' accept='.bin'>"
       "<button id='btn' onclick='upload()'>Upload &amp; Restart</button>"
+      "<div id='bar-wrap'><div id='bar'></div></div>"
       "<div id='status'></div>"
       "<p style='margin-top:20px'><a href='/'>&#8592; Back to config</a></p>"
       "<script>"
-      "async function upload(){"
+      "function upload(){"
         "const file=document.getElementById('f').files[0];"
         "if(!file){alert('Select a .bin file first');return;}"
         "const btn=document.getElementById('btn');"
         "const st=document.getElementById('status');"
+        "const wrap=document.getElementById('bar-wrap');"
+        "const bar=document.getElementById('bar');"
         "btn.disabled=true;"
-        "st.textContent='Uploading '+file.name+' ('+Math.round(file.size/1024)+'KB)...';"
-        "try{"
-          "const fd=new FormData();"
-          "fd.append('firmware',file,file.name);"
-          "const r=await fetch('/update',{method:'POST',body:fd});"
-          "if(r.ok){"
+        "wrap.style.display='block';"
+        "st.className='';"
+        "st.textContent='Starting upload...';"
+        "const fd=new FormData();"
+        "fd.append('firmware',file,'firmware.bin');"
+        "const xhr=new XMLHttpRequest();"
+        "xhr.timeout=120000;"
+        "xhr.upload.onprogress=function(e){"
+          "if(e.lengthComputable){"
+            "const pct=Math.round(e.loaded/e.total*100);"
+            "bar.style.width=pct+'%';"
+            "st.textContent='Uploading '+pct+'%"
+              " ('+Math.round(e.loaded/1024)+'/'+Math.round(e.total/1024)+' KB)';"
+          "}"
+        "};"
+        "xhr.onload=function(){"
+          "wrap.style.display='none';"
+          "if(xhr.status===200){"
             "st.className='ok';"
             "st.textContent='Done! Device is restarting — reconnect in a few seconds.';"
           "}else{"
             "st.className='err';"
-            "st.textContent='Failed: '+await r.text();"
+            "st.textContent='Failed ('+xhr.status+'): '+xhr.responseText;"
             "btn.disabled=false;"
           "}"
-        "}catch(e){"
+        "};"
+        "xhr.onerror=function(){"
+          "wrap.style.display='none';"
           "st.className='err';"
-          "st.textContent='Error: '+e;"
+          "st.textContent='Network error — device may have restarted. Try reconnecting.';"
           "btn.disabled=false;"
-        "}"
+        "};"
+        "xhr.ontimeout=function(){"
+          "wrap.style.display='none';"
+          "st.className='err';"
+          "st.textContent='Timed out — device may be restarting. Try reconnecting.';"
+          "btn.disabled=false;"
+        "};"
+        "xhr.open('POST','/update');"
+        "xhr.send(fd);"
       "}"
       "</script>"
       "</body></html>"
@@ -235,27 +262,43 @@ void DashWebServer::begin() {
   });
 
   // ── POST /update — multipart/form-data upload, written to OTA slot ─────────
-  // onUpload (4th arg) receives each chunk; Update.end() called on final chunk.
-  // Request handler (1st arg) fires after the full body and checks for errors.
   server_.on(
     "/update", HTTP_POST,
     [this](AsyncWebServerRequest *req) {
       bool ok = !Update.hasError();
-      Serial.printf("[OTA] %s\n", ok ? "Done" : Update.errorString());
+      Serial.printf("[OTA] request handler: ok=%d err='%s'\n",
+                    (int)ok, Update.errorString());
       req->send(ok ? 200 : 500, "text/plain", ok ? "OK" : Update.errorString());
       if (ok && restart_cb_) restart_cb_();
     },
     [](AsyncWebServerRequest *req, const String &filename,
        size_t index, uint8_t *data, size_t len, bool final) {
       if (index == 0) {
-        Serial.printf("[OTA] Start: %s\n", filename.c_str());
+        Serial.printf("[OTA] Start: '%s'  free_heap=%u\n",
+                      filename.c_str(), (unsigned)ESP.getFreeHeap());
         if (!Update.begin(UPDATE_SIZE_UNKNOWN, U_FLASH))
-          Serial.printf("[OTA] begin failed: %s\n", Update.errorString());
+          Serial.printf("[OTA] begin FAILED: %s\n", Update.errorString());
+        else
+          Serial.println("[OTA] begin OK");
       }
-      if (!Update.hasError() && Update.write(data, len) != len)
-        Serial.printf("[OTA] write error at %u\n", (unsigned)index);
-      if (final && !Update.end(true))
-        Serial.printf("[OTA] end failed: %s\n", Update.errorString());
+      if (!Update.hasError()) {
+        size_t written = Update.write(data, len);
+        if (written != len)
+          Serial.printf("[OTA] write FAILED at offset %u: wrote %u/%u  err=%s\n",
+                        (unsigned)index, (unsigned)written, (unsigned)len,
+                        Update.errorString());
+        // Log progress every ~64 KB
+        else if ((index >> 16) != ((index + len) >> 16))
+          Serial.printf("[OTA] progress: %u KB written\n",
+                        (unsigned)((index + len) >> 10));
+      }
+      if (final) {
+        if (Update.end(true))
+          Serial.printf("[OTA] end OK — %u KB total\n",
+                        (unsigned)((index + len) >> 10));
+        else
+          Serial.printf("[OTA] end FAILED: %s\n", Update.errorString());
+      }
     }
   );
 

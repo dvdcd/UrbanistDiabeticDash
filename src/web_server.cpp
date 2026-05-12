@@ -3,6 +3,20 @@
 #include <ArduinoJson.h>
 #include <Update.h>
 #include <WiFi.h>
+#include <stdarg.h>
+
+// ── OTA log ring buffer ───────────────────────────────────────────────────────
+static String s_ota_log;
+static constexpr size_t OTA_LOG_MAX = 4096;
+
+static void ota_log(const char *fmt, ...) {
+  char tmp[256];
+  va_list ap; va_start(ap, fmt); vsnprintf(tmp, sizeof(tmp), fmt, ap); va_end(ap);
+  Serial.print(tmp);
+  s_ota_log += tmp;
+  if (s_ota_log.length() > OTA_LOG_MAX)
+    s_ota_log = s_ota_log.substring(s_ota_log.length() - OTA_LOG_MAX);
+}
 
 DashWebServer::DashWebServer(ConfigStore &store) : store_(store) {}
 
@@ -25,6 +39,11 @@ void DashWebServer::begin() {
     String json;
     serializeJson(doc, json);
     req->send(200, "application/json", json);
+  });
+
+  // ── GET /logs — OTA log buffer for the update page ────────────────────────
+  server_.on("/logs", HTTP_GET, [](AsyncWebServerRequest *req) {
+    req->send(200, "text/plain", s_ota_log);
   });
 
   // ── Static files ────────────────────────────────────────────────────────────
@@ -197,6 +216,11 @@ void DashWebServer::begin() {
       "#bar-wrap{background:#222;border-radius:4px;height:6px;margin:8px 0;display:none}"
       "#bar{background:#2a7;height:6px;border-radius:4px;width:0%;transition:width .2s}"
       ".err{color:#f66}.ok{color:#6f6}"
+      "#log-wrap{display:none;margin-top:14px}"
+      "#log-wrap p{margin:0 0 4px;font-size:.8em;color:#666}"
+      "#log{background:#0a0a0a;color:#5d5;font-family:monospace;font-size:11px;"
+           "padding:8px;border-radius:4px;height:160px;overflow-y:auto;"
+           "white-space:pre-wrap;word-break:break-all;border:1px solid #222}"
       "a{color:#888}"
       "</style></head><body>"
       "<h1>Firmware Update</h1>"
@@ -205,6 +229,7 @@ void DashWebServer::begin() {
       "<button id='btn' onclick='upload()'>Upload &amp; Restart</button>"
       "<div id='bar-wrap'><div id='bar'></div></div>"
       "<div id='status'></div>"
+      "<div id='log-wrap'><p>Device log</p><div id='log'></div></div>"
       "<p style='margin-top:20px'><a href='/'>&#8592; Back to config</a></p>"
       "<script>"
       "function upload(){"
@@ -218,6 +243,15 @@ void DashWebServer::begin() {
         "wrap.style.display='block';"
         "st.className='';"
         "st.textContent='Starting upload...';"
+        "const logEl=document.getElementById('log');"
+        "const logWrap=document.getElementById('log-wrap');"
+        "logWrap.style.display='block';"
+        "logEl.textContent='';"
+        "let logTimer=setInterval(function(){"
+          "fetch('/logs').then(function(r){return r.text();}).then(function(t){"
+            "logEl.textContent=t;logEl.scrollTop=logEl.scrollHeight;"
+          "});"
+        "},1000);"
         "const fd=new FormData();"
         "fd.append('firmware',file,'firmware.bin');"
         "const xhr=new XMLHttpRequest();"
@@ -231,6 +265,7 @@ void DashWebServer::begin() {
           "}"
         "};"
         "xhr.onload=function(){"
+          "clearInterval(logTimer);"
           "wrap.style.display='none';"
           "if(xhr.status===200){"
             "st.className='ok';"
@@ -242,12 +277,14 @@ void DashWebServer::begin() {
           "}"
         "};"
         "xhr.onerror=function(){"
+          "clearInterval(logTimer);"
           "wrap.style.display='none';"
           "st.className='err';"
           "st.textContent='Network error — device may have restarted. Try reconnecting.';"
           "btn.disabled=false;"
         "};"
         "xhr.ontimeout=function(){"
+          "clearInterval(logTimer);"
           "wrap.style.display='none';"
           "st.className='err';"
           "st.textContent='Timed out — device may be restarting. Try reconnecting.';"
@@ -266,38 +303,35 @@ void DashWebServer::begin() {
     "/update", HTTP_POST,
     [this](AsyncWebServerRequest *req) {
       bool ok = !Update.hasError();
-      Serial.printf("[OTA] request handler: ok=%d err='%s'\n",
-                    (int)ok, Update.errorString());
+      ota_log("[OTA] result: %s\n", ok ? "OK" : Update.errorString());
       req->send(ok ? 200 : 500, "text/plain", ok ? "OK" : Update.errorString());
       if (ok && restart_cb_) restart_cb_();
     },
     [](AsyncWebServerRequest *req, const String &filename,
        size_t index, uint8_t *data, size_t len, bool final) {
       if (index == 0) {
-        Serial.printf("[OTA] Start: '%s'  free_heap=%u\n",
-                      filename.c_str(), (unsigned)ESP.getFreeHeap());
+        s_ota_log = "";  // clear log at start of each upload
+        ota_log("[OTA] start '%s'  heap=%u\n",
+                filename.c_str(), (unsigned)ESP.getFreeHeap());
         if (!Update.begin(UPDATE_SIZE_UNKNOWN, U_FLASH))
-          Serial.printf("[OTA] begin FAILED: %s\n", Update.errorString());
+          ota_log("[OTA] begin FAILED: %s\n", Update.errorString());
         else
-          Serial.println("[OTA] begin OK");
+          ota_log("[OTA] begin OK\n");
       }
       if (!Update.hasError()) {
         size_t written = Update.write(data, len);
         if (written != len)
-          Serial.printf("[OTA] write FAILED at offset %u: wrote %u/%u  err=%s\n",
-                        (unsigned)index, (unsigned)written, (unsigned)len,
-                        Update.errorString());
-        // Log progress every ~64 KB
+          ota_log("[OTA] write FAILED at %u: wrote %u/%u  err=%s\n",
+                  (unsigned)index, (unsigned)written, (unsigned)len,
+                  Update.errorString());
         else if ((index >> 16) != ((index + len) >> 16))
-          Serial.printf("[OTA] progress: %u KB written\n",
-                        (unsigned)((index + len) >> 10));
+          ota_log("[OTA] %u KB written\n", (unsigned)((index + len) >> 10));
       }
       if (final) {
         if (Update.end(true))
-          Serial.printf("[OTA] end OK — %u KB total\n",
-                        (unsigned)((index + len) >> 10));
+          ota_log("[OTA] end OK — %u KB total\n", (unsigned)((index + len) >> 10));
         else
-          Serial.printf("[OTA] end FAILED: %s\n", Update.errorString());
+          ota_log("[OTA] end FAILED: %s\n", Update.errorString());
       }
     }
   );

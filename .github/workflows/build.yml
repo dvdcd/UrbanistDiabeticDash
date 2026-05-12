@@ -46,13 +46,6 @@ jobs:
           cp .pio/build/matrix-portal-s3/bootloader.bin installer/bootloader.bin
           cp .pio/build/matrix-portal-s3/partitions.bin installer/partitions.bin
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: firmware-${{ github.sha }}
-          path: installer/*.bin
-          retention-days: 30
-
       # Commit updated binaries back to the branch so the web installer
       # always reflects the latest code. Only runs on direct branch pushes —
       # not on PRs (read-only token) and not on main.

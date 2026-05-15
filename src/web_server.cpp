@@ -2,8 +2,12 @@
 #include <LittleFS.h>
 #include <ArduinoJson.h>
 #include <Update.h>
+#include <HTTPClient.h>
+#include <HTTPUpdate.h>
 #include <WiFi.h>
+#include <WiFiClientSecure.h>
 #include <stdarg.h>
+#include "version.h"
 
 // ── OTA log ring buffer + safety flag ────────────────────────────────────────
 static String s_ota_log;
@@ -11,6 +15,13 @@ static constexpr size_t OTA_LOG_MAX = 4096;
 // Set true when we detect a bad upload; blocks Update.end() so a corrupt
 // binary is never committed as the next boot target.
 static bool s_ota_bad = false;
+
+static const char *OTA_MANIFEST_URL =
+    "https://raw.githubusercontent.com/dvdcd/UrbanistDiabeticDash"
+    "/main/installer/manifest-update.json";
+static const char *OTA_FIRMWARE_URL =
+    "https://raw.githubusercontent.com/dvdcd/UrbanistDiabeticDash"
+    "/main/installer/firmware.bin";
 
 static void ota_log(const char *fmt, ...) {
   char tmp[256];
@@ -201,6 +212,62 @@ void DashWebServer::begin() {
       if (restart_cb_) restart_cb_();
     }
   );
+
+  // ── GET /ota/version — returns embedded firmware version instantly ──────────
+  server_.on("/ota/version", HTTP_GET, [](AsyncWebServerRequest *req) {
+    req->send(200, "application/json",
+              "{\"version\":\"" FIRMWARE_VERSION "\"}");
+  });
+
+  // ── GET /ota/check — fetches manifest from GitHub, compares versions ────────
+  // NOTE: HTTPClient is synchronous; this blocks the async task for ~1–5 s
+  // while fetching over HTTPS. The main loop() is unaffected. Other web
+  // requests queue during this window, which is fine for a single-user UI.
+  server_.on("/ota/check", HTTP_GET, [](AsyncWebServerRequest *req) {
+    WiFiClientSecure client;
+    client.setInsecure();
+    HTTPClient http;
+    if (!http.begin(client, OTA_MANIFEST_URL)) {
+      req->send(503, "application/json", "{\"error\":\"http.begin failed\"}");
+      return;
+    }
+    http.setTimeout(8000);
+    int code = http.GET();
+    if (code != 200) {
+      String msg = "{\"error\":\"fetch failed HTTP " + String(code) + "\"}";
+      http.end();
+      req->send(502, "application/json", msg);
+      return;
+    }
+    String body = http.getString();
+    http.end();
+
+    JsonDocument manifest;
+    if (deserializeJson(manifest, body)) {
+      req->send(502, "application/json", "{\"error\":\"parse failed\"}");
+      return;
+    }
+    const char *latest  = manifest["version"] | "";
+    const char *current = FIRMWARE_VERSION;
+    JsonDocument resp;
+    resp["current"]          = current;
+    resp["latest"]           = latest;
+    resp["update_available"] = (strlen(latest) > 0 && strcmp(current, latest) != 0);
+    String json; serializeJson(resp, json);
+    req->send(200, "application/json", json);
+  });
+
+  // ── POST /ota/update — queues a cloud OTA download; runs from loop() ────────
+  server_.on("/ota/update", HTTP_POST, [this](AsyncWebServerRequest *req) {
+    if (ota_update_pending_) {
+      req->send(409, "application/json", "{\"error\":\"already in progress\"}");
+      return;
+    }
+    s_ota_log = "";
+    ota_log("[OTA-cloud] Update queued\n");
+    ota_update_pending_ = true;
+    req->send(200, "application/json", "{\"ok\":true}");
+  });
 
   // ── GET /update — firmware upload page ────────────────────────────────────
   server_.on("/update", HTTP_GET, [](AsyncWebServerRequest *req) {
@@ -396,4 +463,38 @@ void DashWebServer::push_status(bool valid, const String &error, int value_mgdl)
   status_error_   = error;
   status_mgdl_    = value_mgdl;
   status_push_ms_ = millis();
+}
+
+void DashWebServer::run_ota_if_pending() {
+  if (!ota_update_pending_) return;
+  ota_update_pending_ = false;
+
+  ota_log("[OTA-cloud] Downloading from GitHub...\n");
+  WiFiClientSecure client;
+  client.setInsecure();
+
+  httpUpdate.rebootOnUpdate(false);
+  httpUpdate.onProgress([](int cur, int total) {
+    static int last_kb = 0;
+    int kb = cur >> 10;
+    if (kb - last_kb >= 64 || cur == total) {
+      ota_log("[OTA-cloud] %d / %d KB\n", kb, total >> 10);
+      last_kb = kb;
+    }
+  });
+
+  t_httpUpdate_return result = httpUpdate.update(client, OTA_FIRMWARE_URL);
+  switch (result) {
+    case HTTP_UPDATE_OK:
+      ota_log("[OTA-cloud] Flash OK — restarting\n");
+      if (restart_cb_) restart_cb_();
+      break;
+    case HTTP_UPDATE_NO_UPDATES:
+      ota_log("[OTA-cloud] Server says no update available\n");
+      break;
+    case HTTP_UPDATE_FAILED:
+      ota_log("[OTA-cloud] FAILED: %s\n",
+              httpUpdate.getLastErrorString().c_str());
+      break;
+  }
 }

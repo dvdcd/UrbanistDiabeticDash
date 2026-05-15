@@ -270,8 +270,28 @@
     <button type="submit">Save &amp; Restart</button>
   </form>
 
+  <section id="ota-card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <h2 style="margin:0">Firmware Update</h2>
+    </div>
+    <div style="font-size:12px;color:#555;margin-bottom:14px">
+      Version: <span id="ota-current" style="color:#888;font-family:'Courier New',monospace">—</span>
+    </div>
+    <button type="button" onclick="otaCheck()">Check for Update</button>
+    <div id="ota-status" style="font-size:13px;min-height:1.2em;margin:8px 0"></div>
+    <button type="button" id="ota-update-btn" onclick="otaUpdate()"
+            style="display:none;background:#d97706">Update Now</button>
+    <div id="ota-log-wrap" style="display:none;margin-top:12px">
+      <div style="font-size:11px;color:#555;margin-bottom:4px">Update log</div>
+      <div id="ota-log"
+           style="background:#0a0a0a;color:#5d5;font-family:'Courier New',monospace;
+                  font-size:11px;padding:8px;border-radius:6px;height:140px;
+                  overflow-y:auto;white-space:pre-wrap;border:1px solid #222"></div>
+    </div>
+  </section>
+
   <button type="button" id="reset-btn" class="danger">Factory Reset</button>
-  <a href="/update" id="update-link">Update firmware</a>
+  <a href="/update" id="update-link">Manual firmware upload</a>
 
   <p id="status" aria-live="polite"></p>
 
@@ -413,6 +433,73 @@
 
     fetchStatus();
     setInterval(fetchStatus, 15000);
+
+    // ── Cloud OTA ─────────────────────────────────────────────────────────────
+    let otaLatest = null;
+
+    function otaSetStatus(msg, color) {
+      const el = document.getElementById('ota-status');
+      el.textContent = msg;
+      el.style.color = color || '#888';
+    }
+
+    function otaCheck() {
+      document.getElementById('ota-update-btn').style.display = 'none';
+      otaSetStatus('Checking…', '#888');
+      fetch('/ota/check')
+        .then(r => r.json())
+        .then(data => {
+          if (data.error) { otaSetStatus('Check failed: ' + data.error, '#ef4444'); return; }
+          document.getElementById('ota-current').textContent = data.current || '—';
+          if (data.update_available) {
+            otaLatest = data.latest;
+            otaSetStatus('Update available: ' + data.latest, '#f59e0b');
+            document.getElementById('ota-update-btn').style.display = '';
+          } else {
+            otaSetStatus('Up to date (' + data.current + ')', '#10b981');
+          }
+        })
+        .catch(() => otaSetStatus('Network error.', '#ef4444'));
+    }
+
+    function otaUpdate() {
+      if (!confirm('Flash firmware ' + (otaLatest || '') + '?\n\nSettings are preserved. The device will restart when done.')) return;
+      document.getElementById('ota-update-btn').disabled = true;
+      otaSetStatus('Downloading and flashing — do not close this page…', '#f59e0b');
+      const logEl   = document.getElementById('ota-log');
+      const logWrap = document.getElementById('ota-log-wrap');
+      logWrap.style.display = '';
+      logEl.textContent = '';
+
+      const pollLog = setInterval(() => {
+        fetch('/logs').then(r => r.text()).then(t => {
+          logEl.textContent = t;
+          logEl.scrollTop = logEl.scrollHeight;
+          if (t.includes('Flash OK')) {
+            clearInterval(pollLog);
+            otaSetStatus('Done! Device is restarting — reconnect in a few seconds.', '#10b981');
+          } else if (t.includes('FAILED')) {
+            clearInterval(pollLog);
+            otaSetStatus('Update failed — see log above.', '#ef4444');
+            document.getElementById('ota-update-btn').disabled = false;
+          }
+        }).catch(() => {
+          clearInterval(pollLog);
+          otaSetStatus('Device restarted — reconnect in a few seconds.', '#10b981');
+        });
+      }, 1500);
+
+      fetch('/ota/update', { method: 'POST' })
+        .then(r => r.json())
+        .then(data => { if (!data.ok) { clearInterval(pollLog); otaSetStatus(data.error, '#ef4444'); } })
+        .catch(() => {});
+    }
+
+    // Show embedded version on page load (no network hop to GitHub)
+    fetch('/ota/version')
+      .then(r => r.json())
+      .then(data => { if (data.version) document.getElementById('ota-current').textContent = data.version; })
+      .catch(() => {});
   </script>
 </body>
 </html>

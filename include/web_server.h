@@ -13,6 +13,9 @@ class DashWebServer {
   // The callback should set a flag; call ESP.restart() from loop(), not here.
   void set_restart_callback(std::function<void()> cb) { restart_cb_ = cb; }
 
+  // Call from loop() — executes a queued cloud OTA update if one is pending.
+  void run_ota_if_pending();
+
   // Update the runtime status returned by GET /status.
   // Call from loop() after each CGM fetch — not from an async handler.
   void push_status(bool valid, const String &error, int value_mgdl = 0);
@@ -27,4 +30,6 @@ class DashWebServer {
   String        status_error_   = "No data yet";
   int           status_mgdl_    = 0;
   unsigned long status_push_ms_ = 0;
+
+  bool          ota_update_pending_ = false;
 };

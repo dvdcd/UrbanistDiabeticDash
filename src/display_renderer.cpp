@@ -80,21 +80,23 @@ uint16_t DisplayRenderer::value_color_(int mgdl, const DashConfig &cfg) const {
 // ── Draw sub-methods ──────────────────────────────────────────────────────────
 
 // Scatter ~20 twinkling star pixels across the dark content background.
-// Positions shift every 3 s; each star has its own sine phase and speed so
-// they twinkle independently. Draw BEFORE all content — content overwrites
-// stars that land under it, leaving them visible only in empty space.
+// Positions are fixed (deterministic hash with a constant slot); each star
+// has its own sine phase and speed so they twinkle independently but never
+// move. Draw BEFORE all content — content overwrites stars that land under
+// it, leaving them visible only in empty space.
 void DisplayRenderer::draw_sparkles_(const DashConfig &cfg) {
   if (!cfg.show_stars) return;
 
-  unsigned long t     = millis();
-  int           t_pos = (int)(t / 3000);   // position slot, shifts every 3 s
+  unsigned long t = millis();
+  // Fixed position slot — stars never relocate between frames.
+  static constexpr int STAR_SLOT = 42;
 
   for (int y = 1; y < 22; y++) {
     for (int x = 0; x < 128; x++) {
       // ~0.8 % of positions are active → ~21 stars in the 128×21 area.
-      if (px_hash(x, y, t_pos) < 0.008f) {
-        float freq  = 0.0020f + px_hash(x, y, t_pos + 700) * 0.006f; // 0.8–3.1 s period
-        float phase = px_hash(x, y, t_pos + 300) * 6.2832f;
+      if (px_hash(x, y, STAR_SLOT) < 0.008f) {
+        float freq  = 0.0020f + px_hash(x, y, STAR_SLOT + 700) * 0.006f; // 0.8–3.1 s period
+        float phase = px_hash(x, y, STAR_SLOT + 300) * 6.2832f;
         float bright = 0.25f + 0.75f * (sinf(t * freq + phase) * 0.5f + 0.5f);
         uint8_t v = (uint8_t)(bright * 230);
         dma_->drawPixel(x, y, dma_->color565(v, v, v));
@@ -319,18 +321,6 @@ void DisplayRenderer::draw_status_bar_(uint16_t solid_color, const DashConfig &c
       // Constant blue floor keeps deep water from going pure black.
       float b_raw = wb * bright + 18.0f * (1.0f - bright);
       uint8_t b_out = (b_raw > 255.0f) ? 255 : (uint8_t)b_raw;
-
-      // Seafoam: bright whitecaps flash at the wave crest (~15 % of columns).
-      // Uses a 256 ms time bucket so each cap persists briefly before fading.
-      if (cfg.show_seafoam && row == (int)surface) {
-        float foam = px_hash(x, 88, (int)(t >> 8));
-        if (foam > 0.85f) {
-          float fi = (foam - 0.85f) / 0.15f;   // 0..1
-          r_out = (uint8_t)min(255, r_out + (int)(200 * fi));
-          g_out = (uint8_t)min(255, g_out + (int)(210 * fi));
-          b_out = (uint8_t)min(255, b_out + (int)(100 * fi));
-        }
-      }
 
       dma_->drawPixel(x, WAVE_Y + row, dma_->color565(r_out, g_out, b_out));
     }

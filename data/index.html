@@ -234,13 +234,6 @@
           <option value="false">Off</option>
         </select>
       </label>
-      <label>
-        Wave seafoam
-        <select name="show_seafoam">
-          <option value="true">On</option>
-          <option value="false">Off</option>
-        </select>
-      </label>
     </section>
 
     <section>
@@ -290,6 +283,16 @@
     </div>
   </section>
 
+  <div style="display:flex;gap:10px;margin-bottom:4px">
+    <button type="button" id="export-btn" onclick="exportConfig()"
+            style="flex:1;background:#2a2a2a">Export Config</button>
+    <label style="flex:1;margin:0">
+      <button type="button" style="width:100%;background:#2a2a2a"
+              onclick="document.getElementById('import-file').click()">Import Config</button>
+      <input type="file" id="import-file" accept=".json" style="display:none"
+             onchange="importConfig(this)">
+    </label>
+  </div>
   <button type="button" id="reset-btn" class="danger">Factory Reset</button>
   <a href="/update" id="update-link">Manual firmware upload</a>
 
@@ -334,7 +337,7 @@
                          'cgm_source','pulse_speed','pulse_min','wave_speed','status_bar_style'];
     const BOOL_FIELDS = ['dexcom_region_us','unit_mgdl','clock_24h','show_sparkline',
                          'sparkline_auto','show_age','auto_rotate','show_status_label',
-                         'show_stars','show_seafoam'];
+                         'show_stars'];
 
     document.getElementById('form').addEventListener('submit', e => {
       e.preventDefault();
@@ -500,6 +503,44 @@
       .then(r => r.json())
       .then(data => { if (data.version) document.getElementById('ota-current').textContent = data.version; })
       .catch(() => {});
+
+    // ── Config export / import ────────────────────────────────────────────────
+    function exportConfig() {
+      fetch('/config')
+        .then(r => r.json())
+        .then(data => {
+          const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = 'diabdash-config.json';
+          a.click();
+          URL.revokeObjectURL(a.href);
+        })
+        .catch(() => setStatus('Export failed — device unreachable.', true));
+    }
+
+    function importConfig(input) {
+      const file = input.files[0];
+      if (!file) return;
+      input.value = '';
+      const reader = new FileReader();
+      reader.onload = e => {
+        let parsed;
+        try { parsed = JSON.parse(e.target.result); }
+        catch { setStatus('Invalid JSON file.', true); return; }
+        if (!confirm('Apply imported config? This will save settings and restart the device.')) return;
+        setStatus('Importing…', false);
+        fetch('/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(parsed)
+        })
+          .then(r => r.json())
+          .then(d => setStatus(d.ok ? 'Config imported — device restarting…' : ('Error: ' + (d.error || 'unknown')), !d.ok))
+          .catch(() => setStatus('Import failed — device unreachable.', true));
+      };
+      reader.readAsText(file);
+    }
   </script>
 </body>
 </html>

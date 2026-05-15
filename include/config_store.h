@@ -35,7 +35,6 @@ struct DashConfig {
   bool      auto_rotate        = true;
   bool      show_status_label  = true;
   bool      show_stars         = true;   // twinkle stars in background
-  bool      show_seafoam       = true;   // whitecaps on wave crest
   // Colors (packed 0x00RRGGBB)
   uint32_t  color_low          = 0xFF2200;  // low/high alert
   uint32_t  color_warn         = 0xFFCC00;  // warning threshold

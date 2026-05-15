@@ -272,13 +272,6 @@
         <option value="false">Off</option>
       </select>
     </label>
-    <label>
-      Wave seafoam
-      <select name="show_seafoam" onchange="cfg.show_seafoam=this.value==='true'">
-        <option value="true">On</option>
-        <option value="false">Off</option>
-      </select>
-    </label>
   </section>
 
   <!-- Colors — mirrors device UI exactly -->
@@ -310,7 +303,13 @@
     </div>
   </section>
 
-  <button class="secondary" onclick="copyConfig()">Copy Config JSON</button>
+  <div style="display:flex;gap:8px">
+    <button class="secondary" style="flex:1" onclick="copyConfig()">Copy Config JSON</button>
+    <label style="flex:1;margin:0">
+      <button class="secondary" style="width:100%" onclick="document.getElementById('import-file').click()">Import Config</button>
+      <input type="file" id="import-file" accept=".json" style="display:none" onchange="importConfig(this)">
+    </label>
+  </div>
   <div id="copy-toast"></div>
 </div><!-- #controls -->
 
@@ -322,7 +321,7 @@ const cfg = {
   wave_speed: 1, status_bar_style: 0,
   show_sparkline: true, sparkline_auto: false,
   show_age: true, show_status_label: true,
-  show_stars: true, show_seafoam: true,
+  show_stars: true,
   color_low: 0xFF2200, color_warn: 0xFFCC00, color_ok: 0x00CC44, color_wave: 0x0035D2,
 };
 
@@ -493,14 +492,14 @@ function drawText(text, cx, cy, r, g, b, size) {
 }
 
 // ── Stars ─────────────────────────────────────────────────────────────────────
+const STAR_SLOT = 42; // fixed — star positions never relocate
 function drawSparkles(t) {
   if (!cfg.show_stars) return;
-  const tPos = Math.floor(t / 3000);
   for (let y = 1; y < 22; y++) {
     for (let x = 0; x < W; x++) {
-      if (pxHash(x, y, tPos) < 0.008) {
-        const freq  = 0.002 + pxHash(x, y, tPos+700) * 0.006;
-        const phase = pxHash(x, y, tPos+300) * 6.2832;
+      if (pxHash(x, y, STAR_SLOT) < 0.008) {
+        const freq  = 0.002 + pxHash(x, y, STAR_SLOT+700) * 0.006;
+        const phase = pxHash(x, y, STAR_SLOT+300) * 6.2832;
         const bright = 0.25 + 0.75 * (Math.sin(t * freq + phase) * 0.5 + 0.5);
         const v = Math.round(bright * 230);
         setPixel(x, y, v, v, v);
@@ -540,15 +539,6 @@ function drawStatusBar(sr, sg, sb, t) {
       let r = Math.round(wr * bright);
       let g = Math.round(wg * bright);
       let b = Math.min(255, Math.round(wb * bright + 18.0 * (1.0 - bright)));
-      if (cfg.show_seafoam && row === Math.floor(surface)) {
-        const foam = pxHash(x, 88, Math.floor(t / 256));
-        if (foam > 0.85) {
-          const fi = (foam - 0.85) / 0.15;
-          r = Math.min(255, r + Math.round(200*fi));
-          g = Math.min(255, g + Math.round(210*fi));
-          b = Math.min(255, b + Math.round(100*fi));
-        }
-      }
       setPixel(x, WAVE_Y + row, r, g, b);
     }
   }
@@ -731,17 +721,18 @@ function setPreset(mgdl,trend) {
 }
 function copyConfig() {
   const hex = v => '#'+(v&0xFFFFFF).toString(16).padStart(6,'0');
+  // Format matches device GET /config exactly — importable by device and sim alike.
   const out = {
-    color_low:hex(cfg.color_low), color_warn:hex(cfg.color_warn),
-    color_ok:hex(cfg.color_ok),   color_wave:hex(cfg.color_wave),
-    wave_speed:cfg.wave_speed, status_bar_style:cfg.status_bar_style,
-    show_stars:cfg.show_stars, show_seafoam:cfg.show_seafoam,
-    show_sparkline:cfg.show_sparkline, sparkline_auto:cfg.sparkline_auto,
-    clock_24h:cfg.clock_24h, show_age:cfg.show_age,
-    show_status_label:cfg.show_status_label,
-    pulse_speed:cfg.pulse_speed, pulse_min:cfg.pulse_min,
     glucose_low:cfg.glucose_low, glucose_high:cfg.glucose_high,
     glucose_warn_low:cfg.glucose_warn_low, glucose_warn_high:cfg.glucose_warn_high,
+    clock_24h:cfg.clock_24h,
+    pulse_speed:cfg.pulse_speed, pulse_min:cfg.pulse_min,
+    wave_speed:cfg.wave_speed, status_bar_style:cfg.status_bar_style,
+    show_sparkline:cfg.show_sparkline, sparkline_auto:cfg.sparkline_auto,
+    show_age:cfg.show_age, show_status_label:cfg.show_status_label,
+    show_stars:cfg.show_stars,
+    color_low:hex(cfg.color_low), color_warn:hex(cfg.color_warn),
+    color_ok:hex(cfg.color_ok),   color_wave:hex(cfg.color_wave),
   };
   navigator.clipboard.writeText(JSON.stringify(out,null,2)).catch(()=>{
     prompt('Copy this config JSON:',JSON.stringify(out,null,2));
@@ -749,6 +740,55 @@ function copyConfig() {
   const toast=document.getElementById('copy-toast');
   toast.textContent='Copied to clipboard!';
   setTimeout(()=>toast.textContent='',2000);
+}
+
+function importConfig(input) {
+  const file = input.files[0];
+  if (!file) return;
+  input.value = '';
+  const reader = new FileReader();
+  reader.onload = e => {
+    let d;
+    try { d = JSON.parse(e.target.result); } catch { alert('Invalid JSON file.'); return; }
+    const hex2int = s => s ? parseInt(s.replace('#',''), 16) : undefined;
+    const apply = (key, val) => { if (val !== undefined && key in cfg) cfg[key] = val; };
+    apply('glucose_low',        d.glucose_low);
+    apply('glucose_high',       d.glucose_high);
+    apply('glucose_warn_low',   d.glucose_warn_low);
+    apply('glucose_warn_high',  d.glucose_warn_high);
+    apply('clock_24h',          d.clock_24h);
+    apply('pulse_speed',        d.pulse_speed);
+    apply('pulse_min',          d.pulse_min);
+    apply('wave_speed',         d.wave_speed);
+    apply('status_bar_style',   d.status_bar_style);
+    apply('show_sparkline',     d.show_sparkline);
+    apply('sparkline_auto',     d.sparkline_auto);
+    apply('show_age',           d.show_age);
+    apply('show_status_label',  d.show_status_label);
+    apply('show_stars',         d.show_stars);
+    if (d.color_low)  cfg.color_low  = hex2int(d.color_low);
+    if (d.color_warn) cfg.color_warn = hex2int(d.color_warn);
+    if (d.color_ok)   cfg.color_ok   = hex2int(d.color_ok);
+    if (d.color_wave) cfg.color_wave = hex2int(d.color_wave);
+    // Sync UI controls to reflect imported values
+    document.querySelectorAll('[name]').forEach(el => {
+      const k = el.name;
+      if (!(k in cfg)) return;
+      const v = cfg[k];
+      if (el.type === 'color') {
+        el.value = '#'+(v&0xFFFFFF).toString(16).padStart(6,'0');
+      } else if (el.tagName === 'SELECT') {
+        el.value = String(v);
+      } else {
+        el.value = v;
+      }
+    });
+    applyBarVis();
+    const toast = document.getElementById('copy-toast');
+    toast.textContent = 'Config imported!';
+    setTimeout(() => toast.textContent = '', 2000);
+  };
+  reader.readAsText(file);
 }
 
 // ── Trend buttons ─────────────────────────────────────────────────────────────

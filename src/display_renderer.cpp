@@ -249,13 +249,21 @@ void DisplayRenderer::draw_sparkline_(const std::vector<int> &spark,
     dma_->drawPixel(x, y_for(cfg.glucose_warn_high), gray);
   }
 
-  for (size_t i = 0; i < count; i++) {
-    int mgdl  = spark[start_i + i];
-    int bar_h = max(1, (int)map(constrain(mgdl, spark_lo, spark_hi),
-                                spark_lo, spark_hi, 1, HEIGHT));
-    int bx    = X0 + static_cast<int>(i) * BAR_W;
-    int by    = Y0 + HEIGHT - bar_h;
-    dma_->fillRect(bx, by, BAR_W - 1, bar_h, value_color_(mgdl, cfg));
+  // Line chart: connect consecutive readings; each segment colored by its
+  // destination reading so zone transitions (green→yellow→red) show at arrival.
+  auto px_for = [&](size_t i) -> int {
+    return X0 + static_cast<int>(i) * BAR_W + 1;
+  };
+  for (size_t i = 1; i < count; i++) {
+    int x1 = px_for(i - 1), y1 = y_for(spark[start_i + i - 1]);
+    int x2 = px_for(i),     y2 = y_for(spark[start_i + i]);
+    dma_->drawLine(x1, y1, x2, y2, value_color_(spark[start_i + i], cfg));
+  }
+  // Dot at the most recent reading so a single-point case is always visible.
+  if (count > 0) {
+    size_t last = count - 1;
+    dma_->drawPixel(px_for(last), y_for(spark[start_i + last]),
+                    value_color_(spark[start_i + last], cfg));
   }
 }
 

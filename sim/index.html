@@ -590,13 +590,15 @@ function drawSparkline(spark) {
     setPixel(x,yFor(cfg.glucose_warn_low),40,40,40);
     setPixel(x,yFor(cfg.glucose_warn_high),40,40,40);
   }
-  for(let i=0;i<count;i++){
-    const mgdl=spark[startI+i];
-    const clamped=Math.min(hi,Math.max(lo,mgdl));
-    const barH=Math.max(1,Math.round((clamped-lo)/(hi-lo)*(HEIGHT-1))+1);
-    const bx=X0+i*BAR_W,by=Y0+HEIGHT-barH;
-    const [r,g,b]=valueColor(mgdl);
-    for(let dy=0;dy<barH;dy++) for(let dx=0;dx<BAR_W-1;dx++) setPixel(bx+dx,by+dy,r,g,b);
+  const pxFor = i => X0 + i * BAR_W + 1;
+  for (let i = 1; i < count; i++) {
+    const [r,g,b] = valueColor(spark[startI+i]);
+    drawLine(pxFor(i-1), yFor(spark[startI+i-1]), pxFor(i), yFor(spark[startI+i]), r, g, b);
+  }
+  if (count > 0) {
+    const last = count - 1;
+    const [r,g,b] = valueColor(spark[startI+last]);
+    setPixel(pxFor(last), yFor(spark[startI+last]), r, g, b);
   }
 }
 

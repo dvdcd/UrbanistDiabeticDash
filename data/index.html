@@ -235,7 +235,7 @@
         <label class="cb-row"><input type="checkbox" name="wave_enhanced" id="n-wave-enhanced" onchange="document.getElementById('wave2-color-row').style.display=this.checked?'':'none'"> Second wave color</label>
         <label class="cb-row"><input type="checkbox" name="wave_tide" id="n-wave-tide" onchange="document.getElementById('tide-strength-row').style.display=this.checked?'':'none'"> Tide = glucose zone</label>
         <label class="cb-row"><input type="checkbox" name="boat_ride" id="n-boat-ride" onchange="document.getElementById('boat-colors-row').style.display=this.checked?'':'none'"> Boat on waves</label>
-        <label class="cb-row"><input type="checkbox" name="boat_duck" id="n-boat-duck" onchange="syncBoatColorLabels()"> 🦆 Duck instead</label>
+        <label class="cb-row"><input type="checkbox" name="boat_duck" id="n-boat-duck" onchange="onDuckToggle(this.checked)"> 🦆 Duck instead</label>
         <label class="cb-row"><input type="checkbox" name="aurora"> Aurora</label>
       </div>
       <div id="wave2-color-row" style="display:none;margin-bottom:8px">
@@ -337,6 +337,16 @@
       const sailLbl = document.getElementById('boat-sail-label');
       if (hullLbl) hullLbl.textContent = isDuck ? 'Body color' : 'Hull color';
       if (sailLbl) sailLbl.textContent = isDuck ? 'Beak color' : 'Sail color';
+    }
+
+    function onDuckToggle(checked) {
+      if (checked) {
+        const hull = document.querySelector('[name="color_boat_hull"]');
+        const sail = document.querySelector('[name="color_boat_sail"]');
+        if (hull) hull.value = '#ffdd00';
+        if (sail) sail.value = '#ff7700';
+      }
+      syncBoatColorLabels();
     }
 
     function setAllNoct(v) {

@@ -439,6 +439,12 @@ function noctBoatChanged(checked) {
 
 function noctDuckChanged(checked) {
   noct.boat_duck = checked;
+  if (checked) {
+    cfg.color_boat_hull = 0xFFDD00;
+    cfg.color_boat_sail = 0xFF7700;
+    document.querySelector('[name=color_boat_hull]').value = '#ffdd00';
+    document.querySelector('[name=color_boat_sail]').value = '#ff7700';
+  }
   syncBoatColorLabels();
 }
 

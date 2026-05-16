@@ -91,12 +91,15 @@ void DashWebServer::begin() {
     doc["brightness"]         = cfg.brightness;
     // Style
     doc["clock_24h"]          = cfg.clock_24h;
+    doc["show_clock"]         = cfg.show_clock;
     doc["pulse_speed"]        = cfg.pulse_speed;
     doc["pulse_min"]          = cfg.pulse_min;
     doc["wave_speed"]         = cfg.wave_speed;
     doc["status_bar_style"]   = cfg.status_bar_style;
     doc["show_sparkline"]     = cfg.show_sparkline;
     doc["sparkline_auto"]     = cfg.sparkline_auto;
+    doc["sparkline_shadow"]   = cfg.sparkline_shadow;
+    doc["sparkline_fill"]     = cfg.sparkline_fill;
     doc["show_age"]           = cfg.show_age;
     doc["auto_rotate"]        = cfg.auto_rotate;
     doc["show_status_label"]  = cfg.show_status_label;
@@ -104,27 +107,24 @@ void DashWebServer::begin() {
     // Noctiluca theme
     doc["wave_enhanced"]      = cfg.wave_enhanced;
     doc["wave_tide"]          = cfg.wave_tide;
-    doc["stars_const"]        = cfg.stars_const;
+    doc["tide_strength"]      = cfg.tide_strength;
     doc["stars_tint"]         = cfg.stars_tint;
-    doc["sparkline_wake"]     = cfg.sparkline_wake;
-    doc["sparkline_sonar"]    = cfg.sparkline_sonar;
-    doc["palette_noct"]       = cfg.palette_noct;
-    doc["arrows_bearing"]     = cfg.arrows_bearing;
+    doc["boat_ride"]          = cfg.boat_ride;
     doc["aurora"]             = cfg.aurora;
-    doc["alert_sweep"]        = cfg.alert_sweep;
-    doc["glucose_frame"]      = cfg.glucose_frame;
-    doc["clock_chrono"]       = cfg.clock_chrono;
     doc["auto_update"]        = cfg.auto_update;
     // Colors as #rrggbb hex strings (safe for HTML color inputs).
     char cbuf[8];
-    snprintf(cbuf, sizeof(cbuf), "#%06lx", (unsigned long)cfg.color_low);
-    doc["color_low"]  = String(cbuf);
-    snprintf(cbuf, sizeof(cbuf), "#%06lx", (unsigned long)cfg.color_warn);
-    doc["color_warn"] = String(cbuf);
-    snprintf(cbuf, sizeof(cbuf), "#%06lx", (unsigned long)cfg.color_ok);
-    doc["color_ok"]   = String(cbuf);
-    snprintf(cbuf, sizeof(cbuf), "#%06lx", (unsigned long)cfg.color_wave);
-    doc["color_wave"] = String(cbuf);
+    auto fmt_color = [&](uint32_t c) -> String {
+      snprintf(cbuf, sizeof(cbuf), "#%06lx", (unsigned long)c);
+      return String(cbuf);
+    };
+    doc["color_low"]        = fmt_color(cfg.color_low);
+    doc["color_warn"]       = fmt_color(cfg.color_warn);
+    doc["color_ok"]         = fmt_color(cfg.color_ok);
+    doc["color_wave"]       = fmt_color(cfg.color_wave);
+    doc["color_wave2"]      = fmt_color(cfg.color_wave2);
+    doc["color_boat_hull"]  = fmt_color(cfg.color_boat_hull);
+    doc["color_boat_sail"]  = fmt_color(cfg.color_boat_sail);
 
     String json;
     serializeJson(doc, json);
@@ -186,6 +186,8 @@ void DashWebServer::begin() {
       // Style
       if (doc["clock_24h"].is<bool>())
         cfg.clock_24h           = doc["clock_24h"].as<bool>();
+      if (doc["show_clock"].is<bool>())
+        cfg.show_clock          = doc["show_clock"].as<bool>();
       if (doc["pulse_speed"].is<int>())
         cfg.pulse_speed         = doc["pulse_speed"].as<int>();
       if (doc["pulse_min"].is<int>())
@@ -198,6 +200,10 @@ void DashWebServer::begin() {
         cfg.show_sparkline      = doc["show_sparkline"].as<bool>();
       if (doc["sparkline_auto"].is<bool>())
         cfg.sparkline_auto      = doc["sparkline_auto"].as<bool>();
+      if (doc["sparkline_shadow"].is<bool>())
+        cfg.sparkline_shadow    = doc["sparkline_shadow"].as<bool>();
+      if (doc["sparkline_fill"].is<bool>())
+        cfg.sparkline_fill      = doc["sparkline_fill"].as<bool>();
       if (doc["show_age"].is<bool>())
         cfg.show_age            = doc["show_age"].as<bool>();
       if (doc["auto_rotate"].is<bool>())
@@ -207,19 +213,13 @@ void DashWebServer::begin() {
       if (doc["show_stars"].is<bool>())
         cfg.show_stars          = doc["show_stars"].as<bool>();
       // Noctiluca theme
-      if (doc["wave_enhanced"].is<bool>())   cfg.wave_enhanced   = doc["wave_enhanced"].as<bool>();
-      if (doc["wave_tide"].is<bool>())       cfg.wave_tide       = doc["wave_tide"].as<bool>();
-      if (doc["stars_const"].is<bool>())     cfg.stars_const     = doc["stars_const"].as<bool>();
-      if (doc["stars_tint"].is<bool>())      cfg.stars_tint      = doc["stars_tint"].as<bool>();
-      if (doc["sparkline_wake"].is<bool>())  cfg.sparkline_wake  = doc["sparkline_wake"].as<bool>();
-      if (doc["sparkline_sonar"].is<bool>()) cfg.sparkline_sonar = doc["sparkline_sonar"].as<bool>();
-      if (doc["palette_noct"].is<bool>())    cfg.palette_noct    = doc["palette_noct"].as<bool>();
-      if (doc["arrows_bearing"].is<bool>())  cfg.arrows_bearing  = doc["arrows_bearing"].as<bool>();
-      if (doc["aurora"].is<bool>())          cfg.aurora          = doc["aurora"].as<bool>();
-      if (doc["alert_sweep"].is<bool>())     cfg.alert_sweep     = doc["alert_sweep"].as<bool>();
-      if (doc["glucose_frame"].is<bool>())   cfg.glucose_frame   = doc["glucose_frame"].as<bool>();
-      if (doc["clock_chrono"].is<bool>())    cfg.clock_chrono    = doc["clock_chrono"].as<bool>();
-      if (doc["auto_update"].is<bool>())     cfg.auto_update     = doc["auto_update"].as<bool>();
+      if (doc["wave_enhanced"].is<bool>())    cfg.wave_enhanced    = doc["wave_enhanced"].as<bool>();
+      if (doc["wave_tide"].is<bool>())        cfg.wave_tide        = doc["wave_tide"].as<bool>();
+      if (doc["tide_strength"].is<int>())     cfg.tide_strength    = doc["tide_strength"].as<int>();
+      if (doc["stars_tint"].is<bool>())       cfg.stars_tint       = doc["stars_tint"].as<bool>();
+      if (doc["boat_ride"].is<bool>())        cfg.boat_ride        = doc["boat_ride"].as<bool>();
+      if (doc["aurora"].is<bool>())           cfg.aurora           = doc["aurora"].as<bool>();
+      if (doc["auto_update"].is<bool>())      cfg.auto_update      = doc["auto_update"].as<bool>();
       // Colors — client sends "#rrggbb"; convert to packed uint32_t.
       auto parse_hex_color = [](const String &s) -> uint32_t {
         String h = s.startsWith("#") ? s.substring(1) : s;
@@ -233,6 +233,12 @@ void DashWebServer::begin() {
         cfg.color_ok            = parse_hex_color(doc["color_ok"].as<String>());
       if (doc["color_wave"].is<String>())
         cfg.color_wave          = parse_hex_color(doc["color_wave"].as<String>());
+      if (doc["color_wave2"].is<String>())
+        cfg.color_wave2         = parse_hex_color(doc["color_wave2"].as<String>());
+      if (doc["color_boat_hull"].is<String>())
+        cfg.color_boat_hull     = parse_hex_color(doc["color_boat_hull"].as<String>());
+      if (doc["color_boat_sail"].is<String>())
+        cfg.color_boat_sail     = parse_hex_color(doc["color_boat_sail"].as<String>());
 
       store_.save(cfg);
       req->send(200, "application/json", "{\"ok\":true}");

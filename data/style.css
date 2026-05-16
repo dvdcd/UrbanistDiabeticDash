@@ -120,3 +120,20 @@ button.danger:hover { background: #991b1b; }
 }
 
 #update-link:hover { color: #888; }
+
+.cb-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 0;
+  cursor: pointer;
+}
+
+.cb-row input[type=checkbox] {
+  display: inline;
+  width: auto;
+  margin: 0;
+  padding: 0;
+  flex-shrink: 0;
+  accent-color: #2563eb;
+}

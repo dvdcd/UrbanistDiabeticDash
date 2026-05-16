@@ -169,15 +169,20 @@ bool DexcomSource::read_glucose_(CGMData &out) {
     return false;
   }
 
-  // Stream directly into ArduinoJson to avoid intermediate String buffer
-  // that can truncate large responses.
-  JsonDocument doc;
-  DeserializationError err = deserializeJson(doc, http.getStream());
+  // getString() handles chunked transfer-encoding decoding; getStream() does not,
+  // so reading raw from the stream can produce InvalidInput on chunk-size headers.
+  String resp = http.getString();
   http.end();
 
+  JsonDocument doc;
+  DeserializationError err = deserializeJson(doc, resp);
+
   if (err) {
+    String snippet = resp.length() > 0 ? resp.substring(0, 120) : String("(empty)");
+    Serial.printf("[Dexcom] parse error (%s): %s\n", err.c_str(), snippet.c_str());
     out.valid = false;
-    out.error = String("JSON parse error: ") + err.c_str();
+    // Surface the raw snippet in the web UI status card "Error detail" box.
+    out.error = String("JSON ") + err.c_str() + ": " + snippet;
     return false;
   }
   if (!doc.is<JsonArray>()) {
@@ -187,8 +192,10 @@ bool DexcomSource::read_glucose_(CGMData &out) {
     if (strstr(code_str, "SessionNotValid") || strstr(code_str, "Session")) {
       session_id_ = "";  // force re-auth
     }
+    String snippet = resp.substring(0, 120);
+    Serial.printf("[Dexcom] unexpected object: %s\n", snippet.c_str());
     out.valid = false;
-    out.error = "Unexpected response (not an array)";
+    out.error = "Unexpected response: " + snippet;
     return false;
   }
   if (doc.size() == 0) {

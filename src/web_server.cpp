@@ -100,6 +100,19 @@ void DashWebServer::begin() {
     doc["auto_rotate"]        = cfg.auto_rotate;
     doc["show_status_label"]  = cfg.show_status_label;
     doc["show_stars"]         = cfg.show_stars;
+    // Noctiluca theme
+    doc["wave_enhanced"]      = cfg.wave_enhanced;
+    doc["wave_tide"]          = cfg.wave_tide;
+    doc["stars_const"]        = cfg.stars_const;
+    doc["stars_tint"]         = cfg.stars_tint;
+    doc["sparkline_wake"]     = cfg.sparkline_wake;
+    doc["sparkline_sonar"]    = cfg.sparkline_sonar;
+    doc["palette_noct"]       = cfg.palette_noct;
+    doc["arrows_bearing"]     = cfg.arrows_bearing;
+    doc["aurora"]             = cfg.aurora;
+    doc["alert_sweep"]        = cfg.alert_sweep;
+    doc["glucose_frame"]      = cfg.glucose_frame;
+    doc["clock_chrono"]       = cfg.clock_chrono;
     // Colors as #rrggbb hex strings (safe for HTML color inputs).
     char cbuf[8];
     snprintf(cbuf, sizeof(cbuf), "#%06lx", (unsigned long)cfg.color_low);
@@ -189,6 +202,19 @@ void DashWebServer::begin() {
         cfg.show_status_label   = doc["show_status_label"].as<bool>();
       if (doc["show_stars"].is<bool>())
         cfg.show_stars          = doc["show_stars"].as<bool>();
+      // Noctiluca theme
+      if (doc["wave_enhanced"].is<bool>())   cfg.wave_enhanced   = doc["wave_enhanced"].as<bool>();
+      if (doc["wave_tide"].is<bool>())       cfg.wave_tide       = doc["wave_tide"].as<bool>();
+      if (doc["stars_const"].is<bool>())     cfg.stars_const     = doc["stars_const"].as<bool>();
+      if (doc["stars_tint"].is<bool>())      cfg.stars_tint      = doc["stars_tint"].as<bool>();
+      if (doc["sparkline_wake"].is<bool>())  cfg.sparkline_wake  = doc["sparkline_wake"].as<bool>();
+      if (doc["sparkline_sonar"].is<bool>()) cfg.sparkline_sonar = doc["sparkline_sonar"].as<bool>();
+      if (doc["palette_noct"].is<bool>())    cfg.palette_noct    = doc["palette_noct"].as<bool>();
+      if (doc["arrows_bearing"].is<bool>())  cfg.arrows_bearing  = doc["arrows_bearing"].as<bool>();
+      if (doc["aurora"].is<bool>())          cfg.aurora          = doc["aurora"].as<bool>();
+      if (doc["alert_sweep"].is<bool>())     cfg.alert_sweep     = doc["alert_sweep"].as<bool>();
+      if (doc["glucose_frame"].is<bool>())   cfg.glucose_frame   = doc["glucose_frame"].as<bool>();
+      if (doc["clock_chrono"].is<bool>())    cfg.clock_chrono    = doc["clock_chrono"].as<bool>();
       // Colors — client sends "#rrggbb"; convert to packed uint32_t.
       auto parse_hex_color = [](const String &s) -> uint32_t {
         String h = s.startsWith("#") ? s.substring(1) : s;

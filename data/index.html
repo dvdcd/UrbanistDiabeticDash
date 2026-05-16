@@ -260,6 +260,29 @@
       </div>
     </section>
 
+    <section>
+      <h2 style="color:#2a9aaa">✦ Noctiluca Theme</h2>
+      <p style="font-size:12px;color:#555;margin:0 0 10px">Bioluminescent night-ocean visuals. All features are off by default and independently toggleable.</p>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <button type="button" style="flex:1;font-size:12px;padding:6px;background:#0f2a30" onclick="setAllNoct(true)">Enable All</button>
+        <button type="button" style="flex:1;font-size:12px;padding:6px;background:#2a2a2a" onclick="setAllNoct(false)">Disable All</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:13px">
+        <label><input type="checkbox" name="wave_enhanced"> Abyssal wave (depth + reflections + particles)</label>
+        <label><input type="checkbox" name="wave_tide"> Tide encodes glucose zone</label>
+        <label><input type="checkbox" name="stars_const"> Constellation anchor stars</label>
+        <label><input type="checkbox" name="stars_tint"> Horizon glow on lower stars</label>
+        <label><input type="checkbox" name="sparkline_wake"> Wake trail + abyss under chart</label>
+        <label><input type="checkbox" name="sparkline_sonar"> Sonar phosphor persistence</label>
+        <label><input type="checkbox" name="palette_noct"> Bioluminescent color palette</label>
+        <label><input type="checkbox" name="arrows_bearing"> Navigation bearing arrows</label>
+        <label><input type="checkbox" name="aurora"> Aurora bands in background</label>
+        <label><input type="checkbox" name="alert_sweep"> Bioluminescent alert sweep</label>
+        <label><input type="checkbox" name="glucose_frame"> Instrument frame around glucose</label>
+        <label><input type="checkbox" name="clock_chrono"> Chronometer pixel font clock</label>
+      </div>
+    </section>
+
     <button type="submit">Save &amp; Restart</button>
   </form>
 
@@ -503,6 +526,15 @@
       .then(r => r.json())
       .then(data => { if (data.version) document.getElementById('ota-current').textContent = data.version; })
       .catch(() => {});
+
+    function setAllNoct(v) {
+      ['wave_enhanced','wave_tide','stars_const','stars_tint','sparkline_wake',
+       'sparkline_sonar','palette_noct','arrows_bearing','aurora','alert_sweep',
+       'glucose_frame','clock_chrono'].forEach(name => {
+        const el = document.querySelector('[name="'+name+'"]');
+        if (el) el.checked = v;
+      });
+    }
 
     // ── Config export / import ────────────────────────────────────────────────
     function exportConfig() {

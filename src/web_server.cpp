@@ -114,6 +114,7 @@ void DashWebServer::begin() {
     doc["alert_sweep"]        = cfg.alert_sweep;
     doc["glucose_frame"]      = cfg.glucose_frame;
     doc["clock_chrono"]       = cfg.clock_chrono;
+    doc["auto_update"]        = cfg.auto_update;
     // Colors as #rrggbb hex strings (safe for HTML color inputs).
     char cbuf[8];
     snprintf(cbuf, sizeof(cbuf), "#%06lx", (unsigned long)cfg.color_low);
@@ -218,6 +219,7 @@ void DashWebServer::begin() {
       if (doc["alert_sweep"].is<bool>())     cfg.alert_sweep     = doc["alert_sweep"].as<bool>();
       if (doc["glucose_frame"].is<bool>())   cfg.glucose_frame   = doc["glucose_frame"].as<bool>();
       if (doc["clock_chrono"].is<bool>())    cfg.clock_chrono    = doc["clock_chrono"].as<bool>();
+      if (doc["auto_update"].is<bool>())     cfg.auto_update     = doc["auto_update"].as<bool>();
       // Colors — client sends "#rrggbb"; convert to packed uint32_t.
       auto parse_hex_color = [](const String &s) -> uint32_t {
         String h = s.startsWith("#") ? s.substring(1) : s;
@@ -523,4 +525,41 @@ void DashWebServer::run_ota_if_pending() {
               httpUpdate.getLastErrorString().c_str());
       break;
   }
+}
+
+bool DashWebServer::run_auto_update_check() {
+  Serial.println("[OTA-auto] Checking manifest...");
+
+  WiFiClientSecure client;
+  client.setInsecure();
+  HTTPClient http;
+  if (!http.begin(client, OTA_MANIFEST_URL)) {
+    Serial.println("[OTA-auto] manifest fetch failed (http.begin)");
+    return false;
+  }
+  http.setTimeout(8000);
+  int code = http.GET();
+  if (code != 200) {
+    Serial.printf("[OTA-auto] manifest HTTP %d\n", code);
+    http.end();
+    return false;
+  }
+  String body = http.getString();
+  http.end();
+
+  JsonDocument manifest;
+  if (deserializeJson(manifest, body)) {
+    Serial.println("[OTA-auto] manifest parse failed");
+    return false;
+  }
+  const char *latest  = manifest["version"] | "";
+  const char *current = FIRMWARE_VERSION;
+
+  if (strlen(latest) == 0 || strcmp(current, latest) == 0) {
+    Serial.printf("[OTA-auto] Up to date (%s)\n", current);
+    return false;
+  }
+
+  Serial.printf("[OTA-auto] Update available: %s\n", latest);
+  return true;
 }

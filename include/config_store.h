@@ -53,6 +53,8 @@ struct DashConfig {
   bool alert_sweep      = false;  // bioluminescent flash sweeps L→R on each alert pulse
   bool glucose_frame    = false;  // thin instrument frame above/below glucose number
   bool clock_chrono     = false;  // 3×5 chronometer pixel font for clock
+  // OTA
+  bool auto_update      = false;  // check GitHub on boot and flash if newer
 };
 
 class ConfigStore {

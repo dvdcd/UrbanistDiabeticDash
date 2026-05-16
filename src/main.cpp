@@ -114,6 +114,14 @@ void setup() {
 
   start_web_server();
 
+  if (config.auto_update) {
+    renderer.show_message("Checking OTA...");
+    if (web_server->run_auto_update_check()) {
+      renderer.show_message("Update ready!", "Visit config page");
+      delay(3000);
+    }
+  }
+
   bool needs_cgm_config = (config.cgm_source == CGM_NIGHTSCOUT)
       ? config.nightscout_url.isEmpty()
       : config.dexcom_username.isEmpty();

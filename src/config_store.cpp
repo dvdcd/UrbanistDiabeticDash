@@ -48,6 +48,7 @@ bool ConfigStore::load(DashConfig &out) {
   out.alert_sweep       = prefs.getBool(  "alt_swp",    false);
   out.glucose_frame     = prefs.getBool(  "glc_frm",    false);
   out.clock_chrono      = prefs.getBool(  "clk_chrn",   false);
+  out.auto_update       = prefs.getBool(  "auto_upd",   false);
   prefs.end();
   return out.wifi_ssid.length() > 0;
 }
@@ -97,6 +98,7 @@ void ConfigStore::save(const DashConfig &c) {
   prefs.putBool(  "alt_swp",     c.alert_sweep);
   prefs.putBool(  "glc_frm",     c.glucose_frame);
   prefs.putBool(  "clk_chrn",    c.clock_chrono);
+  prefs.putBool(  "auto_upd",    c.auto_update);
   prefs.end();
 }
 

@@ -287,9 +287,13 @@
   </form>
 
   <section id="ota-card">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
       <h2 style="margin:0">Firmware Update</h2>
     </div>
+    <label style="display:flex;align-items:flex-start;gap:8px;margin-bottom:14px;font-size:13px;color:#aaa;cursor:pointer">
+      <input type="checkbox" id="auto-update-chk" style="margin-top:2px;flex-shrink:0">
+      <span><strong style="color:#ccc">Auto-update on boot</strong> — check GitHub on each boot and flash automatically if a newer version is available</span>
+    </label>
     <div style="font-size:12px;color:#555;margin-bottom:14px">
       Version: <span id="ota-current" style="color:#888;font-family:'Courier New',monospace">—</span>
     </div>
@@ -362,8 +366,17 @@
         }
         applySourceVisibility(String(cfg.cgm_source ?? 0));
         applyBarStyleVisibility(String(cfg.status_bar_style ?? 0));
+        document.getElementById('auto-update-chk').checked = !!cfg.auto_update;
       })
       .catch(() => setStatus('Could not load current config.', true));
+
+    document.getElementById('auto-update-chk').addEventListener('change', function() {
+      fetch('/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ auto_update: this.checked })
+      }).catch(() => {});
+    });
 
     const INT_FIELDS  = ['glucose_low','glucose_high','glucose_warn_low','glucose_warn_high',
                          'cgm_source','pulse_speed','pulse_min','wave_speed','status_bar_style'];
@@ -539,7 +552,16 @@
     // Show embedded version on page load (no network hop to GitHub)
     fetch('/ota/version')
       .then(r => r.json())
-      .then(data => { if (data.version) document.getElementById('ota-current').textContent = data.version; })
+      .then(data => {
+        if (data.version) document.getElementById('ota-current').textContent = data.version;
+      })
+      .catch(() => {});
+
+    // If auto-update is on, silently check for updates when the page loads so
+    // the notification appears without the user having to click anything.
+    fetch('/config')
+      .then(r => r.json())
+      .then(cfg => { if (cfg.auto_update) otaCheck(); })
       .catch(() => {});
 
     function setAllNoct(v) {

@@ -552,7 +552,16 @@
     // Show embedded version on page load (no network hop to GitHub)
     fetch('/ota/version')
       .then(r => r.json())
-      .then(data => { if (data.version) document.getElementById('ota-current').textContent = data.version; })
+      .then(data => {
+        if (data.version) document.getElementById('ota-current').textContent = data.version;
+      })
+      .catch(() => {});
+
+    // If auto-update is on, silently check for updates when the page loads so
+    // the notification appears without the user having to click anything.
+    fetch('/config')
+      .then(r => r.json())
+      .then(cfg => { if (cfg.auto_update) otaCheck(); })
       .catch(() => {});
 
     function setAllNoct(v) {

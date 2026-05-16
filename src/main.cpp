@@ -117,9 +117,8 @@ void setup() {
   if (config.auto_update) {
     renderer.show_message("Checking OTA...");
     if (web_server->run_auto_update_check()) {
-      renderer.show_message("Updating...", "Do not power off");
-      delay(500);
-      ESP.restart();
+      renderer.show_message("Update ready!", "Visit config page");
+      delay(3000);
     }
   }
 

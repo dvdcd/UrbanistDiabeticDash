@@ -396,7 +396,7 @@ void DisplayRenderer::draw_status_bar_(uint16_t solid_color, int mgdl,
     }
   }
 
-  // Boat: right-triangle sail + 7px raft at waterline
+  // Boat or duck sprite bobbing on wave surface
   if (cfg.boat_ride) {
     const int bx = 62;
     const int by = WAVE_Y + constrain((int)surfaces[bx], 0, WAVE_H - 1);
@@ -406,10 +406,22 @@ void DisplayRenderer::draw_status_bar_(uint16_t solid_color, int mgdl,
     uint8_t sr = (cfg.color_boat_sail >> 16) & 0xFF;
     uint8_t sg = (cfg.color_boat_sail >>  8) & 0xFF;
     uint8_t sb =  cfg.color_boat_sail        & 0xFF;
-    draw_shaded_(bx-3, bx+3, by,   hr, hg, hb);  // raft: 7px
-    draw_shaded_(bx-2, bx+2, by-2, sr, sg, sb);  // sail base: 5px
-    draw_shaded_(bx,   bx+2, by-3, sr, sg, sb);  // sail mid: 3px right-aligned
-    dma_->drawPixel(bx+2, by-4, dma_->color565(sr/2, sg/2, sb/2)); // sail tip
+    if (cfg.boat_duck) {
+      // Duck: round body + head shifted right + beak pixel
+      // hr/hg/hb = body color (yellow),  sr/sg/sb = beak color (orange)
+      draw_shaded_(bx-2, bx+2, by,   hr, hg, hb);  // body base: 5px
+      draw_shaded_(bx-3, bx+3, by-1, hr, hg, hb);  // body widest: 7px
+      draw_shaded_(bx-2, bx+2, by-2, hr, hg, hb);  // body upper: 5px
+      draw_shaded_(bx+1, bx+3, by-3, hr, hg, hb);  // neck/head base: 3px
+      draw_shaded_(bx,   bx+3, by-4, hr, hg, hb);  // head: 4px
+      dma_->drawPixel(bx+4, by-3, dma_->color565(sr, sg, sb));       // beak
+      dma_->drawPixel(bx+2, by-4, dma_->color565(hr/8, hg/8, hb/8)); // eye
+    } else {
+      draw_shaded_(bx-3, bx+3, by,   hr, hg, hb);  // raft: 7px
+      draw_shaded_(bx-2, bx+2, by-2, sr, sg, sb);  // sail base: 5px
+      draw_shaded_(bx,   bx+2, by-3, sr, sg, sb);  // sail mid: 3px right-aligned
+      dma_->drawPixel(bx+2, by-4, dma_->color565(sr/2, sg/2, sb/2)); // sail tip
+    }
   }
 }
 

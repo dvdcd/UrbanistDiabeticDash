@@ -47,6 +47,7 @@ bool ConfigStore::load(DashConfig &out) {
   out.tide_strength     = prefs.getInt(   "tide_str",   75);
   out.stars_tint        = prefs.getBool(  "st_tint",    false);
   out.boat_ride         = prefs.getBool(  "boat_ride",  false);
+  out.boat_duck         = prefs.getBool(  "boat_duck",  false);
   out.aurora            = prefs.getBool(  "aurora",     false);
   out.auto_update       = prefs.getBool(  "auto_upd",   false);
   prefs.end();
@@ -97,6 +98,7 @@ void ConfigStore::save(const DashConfig &c) {
   prefs.putInt(   "tide_str",    c.tide_strength);
   prefs.putBool(  "st_tint",     c.stars_tint);
   prefs.putBool(  "boat_ride",   c.boat_ride);
+  prefs.putBool(  "boat_duck",   c.boat_duck);
   prefs.putBool(  "aurora",      c.aurora);
   prefs.putBool(  "auto_upd",    c.auto_update);
   prefs.end();

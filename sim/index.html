@@ -115,6 +115,13 @@
     .noct-sub {
       border-top: 1px solid #1a3a4a; margin-top: 12px; padding-top: 12px;
     }
+    .cb-label {
+      display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 12px;
+    }
+    .cb-label input[type=checkbox] {
+      width: auto; margin: 0; padding: 0; height: auto; accent-color: #2563eb;
+    }
+    .cb-label:last-child { margin-bottom: 0; }
   </style>
 </head>
 <body>
@@ -211,14 +218,10 @@
         <option value="true">24-hour</option>
       </select>
     </label>
-    <label>
-      Status bar
-      <select name="status_bar_style"
-              onchange="cfg.status_bar_style=+this.value">
-        <option value="0">Animated wave</option>
-        <option value="1">Solid color</option>
-        <option value="2">Off</option>
-      </select>
+    <label class="cb-label">
+      <input type="checkbox" name="show_clock" checked
+             onchange="cfg.show_clock=this.checked">
+      Show clock
     </label>
     <label>
       Alert pulse speed
@@ -247,15 +250,18 @@
         <option value="true">Auto-fit</option>
       </select>
     </label>
-    <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
-      <input type="checkbox" name="sparkline_wake"
-             style="width:auto;margin:0;padding:0;height:auto;accent-color:#2563eb"
-             onchange="cfg.sparkline_wake=this.checked">
-      Sparkline wake trail
+    <label class="cb-label">
+      <input type="checkbox" name="sparkline_shadow"
+             onchange="cfg.sparkline_shadow=this.checked">
+      Sparkline drop shadow
     </label>
-    <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+    <label class="cb-label">
+      <input type="checkbox" name="sparkline_fill"
+             onchange="cfg.sparkline_fill=this.checked">
+      Sparkline area fill
+    </label>
+    <label class="cb-label">
       <input type="checkbox" name="sparkline_sonar"
-             style="width:auto;margin:0;padding:0;height:auto;accent-color:#2563eb"
              onchange="cfg.sparkline_sonar=this.checked">
       Sonar trail (phosphor ghost)
     </label>
@@ -313,12 +319,16 @@
       <button class="secondary" style="flex:1" onclick="setAllNoct(false)">Disable All</button>
     </div>
     <div class="noct-grid">
-      <label><input type="checkbox" id="n-wave_enhanced" onchange="noct.wave_enhanced=this.checked"> Abyssal wave depth</label>
-      <label><input type="checkbox" id="n-wave_tide"     onchange="noctTideChanged(this.checked)"> Tide = glucose zone</label>
-      <label><input type="checkbox" id="n-boat_ride"     onchange="noctBoatChanged(this.checked)"> Boat on the waves</label>
-      <label><input type="checkbox" id="n-palette_noct"  onchange="noctPaletteChanged(this.checked)"> Ocean palette</label>
-      <label><input type="checkbox" id="n-stars_tint"    onchange="noct.stars_tint=this.checked"> Star horizon tint</label>
-      <label><input type="checkbox" id="n-aurora"        onchange="noct.aurora=this.checked"> Aurora</label>
+      <label><input type="checkbox" id="n-show_wave"    onchange="cfg.status_bar_style=this.checked?0:2"> Animated wave</label>
+      <label><input type="checkbox" id="n-show_stars"   onchange="cfg.show_stars=this.checked"> Stars</label>
+      <label><input type="checkbox" id="n-wave_enhanced"
+                    onchange="noct.wave_enhanced=this.checked;document.getElementById('wave2-color-row').style.display=this.checked?'':'none'">
+             Second wave color</label>
+      <label><input type="checkbox" id="n-wave_tide"    onchange="noctTideChanged(this.checked)"> Tide = glucose zone</label>
+      <label><input type="checkbox" id="n-boat_ride"    onchange="noctBoatChanged(this.checked)"> Boat on the waves</label>
+      <label><input type="checkbox" id="n-stars_tint"   onchange="noct.stars_tint=this.checked"> Star horizon tint</label>
+      <label><input type="checkbox" id="n-aurora"       onchange="noct.aurora=this.checked"> Aurora</label>
+      <label></label>
     </div>
 
     <!-- Tide aggressiveness — conditional -->
@@ -332,6 +342,15 @@
                  min="0" max="100" value="75"
                  oninput="cfg.tide_strength=+this.value;document.querySelector('[name=tide_strength]').value=this.value">
         </div>
+      </label>
+    </div>
+
+    <!-- Second wave color — conditional -->
+    <div id="wave2-color-row" style="display:none;margin-bottom:12px">
+      <label style="color:#7bb;margin-bottom:0">
+        Second wave color (deep)
+        <input name="color_wave2" type="color" value="#0a0020"
+               oninput="cfg.color_wave2=parseInt(this.value.slice(1),16)">
       </label>
     </div>
 
@@ -352,19 +371,13 @@
     </div>
 
     <div class="noct-sub">
-      <label>
-        Stars
-        <select name="show_stars" onchange="cfg.show_stars=this.value==='true'">
-          <option value="true">On</option>
-          <option value="false">Off</option>
-        </select>
-      </label>
-      <label>
+      <button class="secondary" style="margin-bottom:12px" onclick="applyOceanPalette()">Apply Ocean Palette</button>
+      <label style="color:#7bb">
         Wave base color
         <input name="color_wave" type="color" value="#0035d2"
                oninput="cfg.color_wave=parseInt(this.value.slice(1),16)">
       </label>
-      <label style="margin-bottom:0">
+      <label style="color:#7bb;margin-bottom:0">
         Wave speed
         <select name="wave_speed" onchange="cfg.wave_speed=+this.value">
           <option value="0" selected>Slow</option>
@@ -391,13 +404,14 @@
 const cfg = {
   glucose_low: 70, glucose_high: 180, glucose_warn_low: 80, glucose_warn_high: 160,
   clock_24h: false, pulse_speed: 1, pulse_min: 50,
-  wave_speed: 0, status_bar_style: 0,
+  wave_speed: 0, status_bar_style: 2,
   show_sparkline: true, sparkline_auto: false,
-  sparkline_wake: false, sparkline_sonar: false,
-  show_age: true, show_status_label: true,
-  show_stars: true,
+  sparkline_shadow: false, sparkline_fill: false, sparkline_sonar: false,
+  show_age: true, show_status_label: true, show_clock: true,
+  show_stars: false,
   tide_strength: 75,
-  color_low: 0xFF2200, color_warn: 0xFFCC00, color_ok: 0x00CC44, color_wave: 0x0035D2,
+  color_low: 0xFF2200, color_warn: 0xFFCC00, color_ok: 0x00CC44,
+  color_wave: 0x0035D2, color_wave2: 0x0a0020,
   color_boat_hull: 0xC87828, color_boat_sail: 0xAA8C3C,
 };
 
@@ -412,7 +426,6 @@ const noct = {
   wave_enhanced: false,
   wave_tide:     false,
   stars_tint:    false,
-  palette_noct:  false,
   aurora:        false,
   boat_ride:     false,
 };
@@ -420,7 +433,10 @@ const noct = {
 function setAllNoct(v) {
   Object.keys(noct).forEach(k => noct[k] = v);
   document.querySelectorAll('#noct-section input[type=checkbox]').forEach(cb => cb.checked = v);
+  cfg.status_bar_style = v ? 0 : 2;
+  cfg.show_stars = v;
   document.getElementById('tide-strength-row').style.display = v ? '' : 'none';
+  document.getElementById('wave2-color-row').style.display   = v ? '' : 'none';
   document.getElementById('boat-colors-row').style.display   = v ? '' : 'none';
 }
 
@@ -434,16 +450,13 @@ function noctBoatChanged(checked) {
   document.getElementById('boat-colors-row').style.display = checked ? '' : 'none';
 }
 
-function noctPaletteChanged(checked) {
-  noct.palette_noct = checked;
-  if (checked) {
-    cfg.color_low  = 0xFF3030; cfg.color_warn = 0xFFAA00;
-    cfg.color_ok   = 0x00E5CC; cfg.color_wave = 0x002080;
-    document.querySelector('[name=color_low]').value  = '#ff3030';
-    document.querySelector('[name=color_warn]').value = '#ffaa00';
-    document.querySelector('[name=color_ok]').value   = '#00e5cc';
-    document.querySelector('[name=color_wave]').value = '#002080';
-  }
+function applyOceanPalette() {
+  cfg.color_low  = 0xFF3030; cfg.color_warn = 0xFFAA00;
+  cfg.color_ok   = 0x00E5CC; cfg.color_wave = 0x002080;
+  document.querySelector('[name=color_low]').value  = '#ff3030';
+  document.querySelector('[name=color_warn]').value = '#ffaa00';
+  document.querySelector('[name=color_ok]').value   = '#00e5cc';
+  document.querySelector('[name=color_wave]').value = '#002080';
 }
 
 // ── Canvas setup ──────────────────────────────────────────────────────────────
@@ -475,14 +488,6 @@ function valueColor(mgdl) {
   if (mgdl <= cfg.glucose_low  || mgdl >= cfg.glucose_high)         return unpack(cfg.color_low);
   if (mgdl <= cfg.glucose_warn_low || mgdl >= cfg.glucose_warn_high) return unpack(cfg.color_warn);
   return unpack(cfg.color_ok);
-}
-
-// Bioluminescent palette — replaces traffic-light colors when ocean palette enabled
-function vcol(mgdl) {
-  if (!noct.palette_noct) return valueColor(mgdl);
-  if (mgdl <= cfg.glucose_low  || mgdl >= cfg.glucose_high)         return [255,  48,  48];
-  if (mgdl <= cfg.glucose_warn_low || mgdl >= cfg.glucose_warn_high) return [255, 170,   0];
-  return [0, 229, 204];
 }
 
 function drawLine(x1,y1,x2,y2,r,g,b) {
@@ -594,6 +599,14 @@ function drawAurora(t) {
 }
 
 // ── Wave strip ────────────────────────────────────────────────────────────────
+// Draw a row of pixels with edge shading (first/last pixel at 40% brightness)
+function drawShaded(xL, xR, y, r, g, b) {
+  for (let x = xL; x <= xR; x++) {
+    const dim = (x === xL || x === xR) ? 0.4 : 1.0;
+    setPixel(x, y, Math.round(r*dim), Math.round(g*dim), Math.round(b*dim));
+  }
+}
+
 function drawStatusBar(sr, sg, sb, t) {
   const WAVE_Y = 22, WAVE_H = 10;
   if (cfg.status_bar_style === 2) return;
@@ -608,10 +621,8 @@ function drawStatusBar(sr, sg, sb, t) {
   const isAlert = m <= cfg.glucose_low  || m >= cfg.glucose_high;
   const isWarn  = m <= cfg.glucose_warn_low || m >= cfg.glucose_warn_high;
 
-  // Base speed multiplier, optionally boosted by tide
   let speedMult = cfg.wave_speed === 0 ? 0.5 : cfg.wave_speed === 2 ? 2.0 : 1.0;
 
-  // Tide: amplitude and baseline shift with glucose zone, scaled by aggressiveness
   let amplitude = 1.5, baseline = 2.5;
   if (noct.wave_tide) {
     const s = cfg.tide_strength / 100;
@@ -629,7 +640,6 @@ function drawStatusBar(sr, sg, sb, t) {
   const t4 = Math.floor(t / 64);
   const wr=(cfg.color_wave>>>16)&0xFF, wg=(cfg.color_wave>>>8)&0xFF, wb=cfg.color_wave&0xFF;
 
-  // Pre-compute wave surface per column
   const surfaces = new Float32Array(W);
   for (let x = 0; x < W; x++) {
     const ft = t * 0.001 * speedMult;
@@ -639,6 +649,8 @@ function drawStatusBar(sr, sg, sb, t) {
                 + Math.sin(x*0.047 + ft*1.40) * 0.25) / 2.15;
     surfaces[x] = baseline + amplitude * wave;
   }
+
+  const [d2r,d2g,d2b] = unpack(cfg.color_wave2);
 
   for (let x = 0; x < W; x++) {
     const surface = surfaces[x];
@@ -654,38 +666,37 @@ function drawStatusBar(sr, sg, sb, t) {
       let g = Math.round(wg * bright);
       let b = Math.min(255, Math.round(wb * bright + 18.0 * (1.0 - bright)));
 
-      // Abyssal depth: hue shift toward midnight indigo at bottom rows
       if (noct.wave_enhanced) {
         const depth = row / (WAVE_H - 1);
-        r = Math.round(r * (1 - depth * 0.75) + 15 * depth);
-        g = Math.round(g * (1 - depth * 0.85));
-        b = Math.min(255, Math.round(b * (1 - depth * 0.2) + 45 * depth));
+        r = Math.round(r * (1 - depth * 0.75) + d2r * depth);
+        g = Math.round(g * (1 - depth * 0.85) + d2g * depth);
+        b = Math.min(255, Math.round(b * (1 - depth * 0.2) + d2b * depth));
       }
       setPixel(x, WAVE_Y + row, r, g, b);
     }
   }
 
-  // Boat riding the waves
+  // Boat: right-triangle sail (right side = mast) + raft at waterline
   if (noct.boat_ride) {
     const bx = 62;
     const by = WAVE_Y + Math.floor(surfaces[bx]);
     const [hr,hg,hb] = unpack(cfg.color_boat_hull);
     const [saR,saG,saB] = unpack(cfg.color_boat_sail);
-    // Hull (7px)
-    for (let dx = -3; dx <= 3; dx++) setPixel(bx+dx, by,   hr, hg, hb);
-    // Deck (5px)
-    for (let dx = -2; dx <= 2; dx++) setPixel(bx+dx, by-1, hr, hg, hb);
-    // Sail mid (3px, left of mast center)
-    for (let dx = -2; dx <= 0; dx++) setPixel(bx+dx, by-2, saR, saG, saB);
-    // Sail top (2px)
-    setPixel(bx-2, by-3, saR, saG, saB);
-    setPixel(bx-1, by-3, saR, saG, saB);
-    // Masthead (1px at mast, dimmed hull color)
-    setPixel(bx, by-4, Math.round(hr*0.4), Math.round(hg*0.4), Math.round(hb*0.4));
+
+    // Raft (3px, centered, edge-shaded)
+    drawShaded(bx-1, bx+1, by, hr, hg, hb);
+
+    // Sail: right-triangle, vertical right edge (mast), hypotenuse left
+    // Base row (5px): bx-2..bx+2
+    drawShaded(bx-2, bx+2, by-2, saR, saG, saB);
+    // Mid row (3px, right-aligned): bx..bx+2
+    drawShaded(bx, bx+2, by-3, saR, saG, saB);
+    // Tip (1px = mast top): bx+2
+    setPixel(bx+2, by-4, Math.round(saR*0.5), Math.round(saG*0.5), Math.round(saB*0.5));
   }
 }
 
-// ── Trend arrows (CX moved left to 42) ───────────────────────────────────────
+// ── Trend arrows (CX = 42) ────────────────────────────────────────────────────
 function drawTrendArrow(code, r, g, b) {
   const CX = 42, CY = 11;
   if (code === 1) {
@@ -731,25 +742,24 @@ function drawSparkline(spark) {
   const yFor = v => Y0+HEIGHT-1-Math.round((Math.min(hi,Math.max(lo,v))-lo)/(hi-lo)*(HEIGHT-1));
   const pxFor = i => X0 + i * BAR_W + 1;
 
-  // Threshold markers
   for(let x=X0;x<X0+WIDTH;x++){
     setPixel(x,yFor(cfg.glucose_warn_low),40,40,40);
     setPixel(x,yFor(cfg.glucose_warn_high),40,40,40);
   }
 
-  // Sonar: ghost previous frame at 25% brightness
+  // Sonar: ghost previous frame at 25%
   if (cfg.sparkline_sonar && sonarPrev.length > 0) {
     for (const p of sonarPrev)
       setPixel(p.x, p.y, Math.round(p.r*0.25), Math.round(p.g*0.25), Math.round(p.b*0.25));
   }
 
-  // Abyss fill: dim gradient from line color → wave color below each point
-  if (cfg.sparkline_wake && count > 0) {
+  // Area fill: gradient from line color → wave color below each point
+  if (cfg.sparkline_fill && count > 0) {
     const [fw,gw,bw] = unpack(cfg.color_wave);
     for (let i = 0; i < count; i++) {
       const x  = pxFor(i);
       const y  = yFor(spark[startI+i]);
-      const [lr,lg,lb] = vcol(spark[startI+i]);
+      const [lr,lg,lb] = valueColor(spark[startI+i]);
       const maxDy = Y0+HEIGHT-1 - y;
       if (maxDy <= 0) continue;
       for (let dy = 1; dy <= maxDy; dy++) {
@@ -763,20 +773,20 @@ function drawSparkline(spark) {
     }
   }
 
-  // Draw lines with optional wake trail (y+1 shadow)
+  // Lines with optional drop shadow (y+1 at 25%)
   const newPrev = [];
   for (let i = 1; i < count; i++) {
     const x1=pxFor(i-1), y1=yFor(spark[startI+i-1]);
     const x2=pxFor(i),   y2=yFor(spark[startI+i]);
-    const [r,g,b] = vcol(spark[startI+i]);
-    if (cfg.sparkline_wake)
+    const [r,g,b] = valueColor(spark[startI+i]);
+    if (cfg.sparkline_shadow)
       drawLine(x1,y1+1,x2,y2+1,Math.round(r*0.25),Math.round(g*0.25),Math.round(b*0.25));
     drawLine(x1,y1,x2,y2,r,g,b);
     newPrev.push({x:x1,y:y1,r,g,b});
   }
   if (count > 0) {
     const last=count-1, x=pxFor(last), y=yFor(spark[startI+last]);
-    const [r,g,b]=vcol(spark[startI+last]);
+    const [r,g,b]=valueColor(spark[startI+last]);
     setPixel(x,y,r,g,b);
     newPrev.push({x,y,r,g,b});
   }
@@ -802,25 +812,22 @@ function render(now) {
   for (let i=3; i<px.length; i+=4) px[i]=255;
 
   const mgdl       = state.value_mgdl;
-  const [cr,cg,cb] = vcol(mgdl);
+  const [cr,cg,cb] = valueColor(mgdl);
   const alert      = mgdl <= cfg.glucose_low || mgdl >= cfg.glucose_high;
-  const alertColor = noct.palette_noct ? [255,48,48] : unpack(cfg.color_low);
+  const alertColor = unpack(cfg.color_low);
 
-  // Aurora first — everything else renders on top
   drawAurora(t);
-
-  // Stars
   drawSparkles(t);
 
   if (!state.error) {
     drawSparkline(state.sparkline);
-    drawTrendArrow(state.trend_code, cr, cg, cb);
     drawStatusBar(cr, cg, cb, t);
   } else {
     drawStatusBar(...alertColor, t);
   }
 
   if (!state.error) {
+    // Compute pulsed color (used for both glucose number AND arrow)
     let [gr,gg,gb] = [cr,cg,cb];
     if (alert) {
       const pulseHz = [0.25, 0.5, 1.0][cfg.pulse_speed] ?? 0.5;
@@ -831,6 +838,9 @@ function render(now) {
       gg=Math.min(255,Math.round(cg*pulse));
       gb=Math.min(255,Math.round(cb*pulse));
     }
+
+    // Arrow and glucose number share the same pulsed color
+    drawTrendArrow(state.trend_code, gr, gg, gb);
     drawText(String(mgdl), 1, 3, gr, gg, gb, 2);
 
     if (cfg.show_age) drawText('5m', 71, 3, 160,160,160, 1);
@@ -842,18 +852,20 @@ function render(now) {
       else if (mgdl >= cfg.glucose_warn_high) drawText('HI?', 71,13,255,204,  0,1);
     }
 
-    if (state.stale) {
-      drawText('STALE', 2, 24, 200,200,200, 1);
-    } else {
-      const d = new Date();
-      let ts;
-      if (cfg.clock_24h) {
-        ts = String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+    if (cfg.show_clock) {
+      if (state.stale) {
+        drawText('STALE', 2, 24, 200,200,200, 1);
       } else {
-        const h = d.getHours()%12||12;
-        ts = `${h}:${String(d.getMinutes()).padStart(2,'0')} ${d.getHours()<12?'AM':'PM'}`;
+        const d = new Date();
+        let ts;
+        if (cfg.clock_24h) {
+          ts = String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+        } else {
+          const h = d.getHours()%12||12;
+          ts = `${h}:${String(d.getMinutes()).padStart(2,'0')} ${d.getHours()<12?'AM':'PM'}`;
+        }
+        drawText(ts, 2, 24, 220,220,220, 1);
       }
-      drawText(ts, 2, 24, 220,220,220, 1);
     }
   } else {
     drawText('ERROR', 2, 24, 255,80,60, 1);
@@ -901,19 +913,20 @@ function copyConfig() {
   const out = {
     glucose_low:cfg.glucose_low, glucose_high:cfg.glucose_high,
     glucose_warn_low:cfg.glucose_warn_low, glucose_warn_high:cfg.glucose_warn_high,
-    clock_24h:cfg.clock_24h,
+    clock_24h:cfg.clock_24h, show_clock:cfg.show_clock,
     pulse_speed:cfg.pulse_speed, pulse_min:cfg.pulse_min,
     wave_speed:cfg.wave_speed, status_bar_style:cfg.status_bar_style,
     show_sparkline:cfg.show_sparkline, sparkline_auto:cfg.sparkline_auto,
-    sparkline_wake:cfg.sparkline_wake, sparkline_sonar:cfg.sparkline_sonar,
+    sparkline_shadow:cfg.sparkline_shadow, sparkline_fill:cfg.sparkline_fill,
+    sparkline_sonar:cfg.sparkline_sonar,
     show_age:cfg.show_age, show_status_label:cfg.show_status_label,
     show_stars:cfg.show_stars, tide_strength:cfg.tide_strength,
     color_low:hex(cfg.color_low), color_warn:hex(cfg.color_warn),
     color_ok:hex(cfg.color_ok),   color_wave:hex(cfg.color_wave),
+    color_wave2:hex(cfg.color_wave2),
     color_boat_hull:hex(cfg.color_boat_hull), color_boat_sail:hex(cfg.color_boat_sail),
     wave_enhanced:noct.wave_enhanced, wave_tide:noct.wave_tide,
-    stars_tint:noct.stars_tint, palette_noct:noct.palette_noct,
-    aurora:noct.aurora, boat_ride:noct.boat_ride,
+    stars_tint:noct.stars_tint, aurora:noct.aurora, boat_ride:noct.boat_ride,
   };
   navigator.clipboard.writeText(JSON.stringify(out,null,2)).catch(()=>{
     prompt('Copy this config JSON:',JSON.stringify(out,null,2));
@@ -932,8 +945,6 @@ function importConfig(input) {
     let d;
     try { d = JSON.parse(e.target.result); } catch { alert('Invalid JSON file.'); return; }
     const hex2int = s => s ? parseInt(s.replace('#',''), 16) : undefined;
-    const apply = (key, val) => { if (val !== undefined && key in cfg) cfg[key] = val; };
-    // Apply all cfg keys
     Object.keys(cfg).forEach(k => {
       if (k.startsWith('color_')) {
         if (d[k] !== undefined) cfg[k] = hex2int(d[k]) ?? cfg[k];
@@ -942,11 +953,16 @@ function importConfig(input) {
       }
     });
     // Apply noct flags
-    ['wave_enhanced','wave_tide','stars_tint','palette_noct','aurora','boat_ride'].forEach(k => {
+    ['wave_enhanced','wave_tide','stars_tint','aurora','boat_ride'].forEach(k => {
       if (d[k] !== undefined) noct[k] = !!d[k];
       const el = document.getElementById('n-'+k);
       if (el) el.checked = noct[k];
     });
+    // Sync n-show_wave and n-show_stars from cfg
+    const showWaveEl = document.getElementById('n-show_wave');
+    if (showWaveEl) showWaveEl.checked = cfg.status_bar_style === 0;
+    const showStarsEl = document.getElementById('n-show_stars');
+    if (showStarsEl) showStarsEl.checked = cfg.show_stars;
     // Sync all named inputs
     document.querySelectorAll('[name]').forEach(el => {
       const k = el.name;
@@ -957,8 +973,9 @@ function importConfig(input) {
       else if (el.tagName==='SELECT') el.value = String(v);
       else el.value = v;
     });
-    // Update conditional visibility
+    // Conditional rows
     document.getElementById('tide-strength-row').style.display = noct.wave_tide ? '' : 'none';
+    document.getElementById('wave2-color-row').style.display   = noct.wave_enhanced ? '' : 'none';
     document.getElementById('boat-colors-row').style.display   = noct.boat_ride ? '' : 'none';
     document.getElementById('tide-str-num').value = cfg.tide_strength;
     const toast = document.getElementById('copy-toast');

@@ -138,29 +138,55 @@ bool DexcomSource::login_(CGMData &out) {
 }
 
 bool DexcomSource::read_glucose_(CGMData &out) {
+  WiFiClientSecure client;
+  client.setInsecure();
+  HTTPClient http;
+
   String url = base_url_ +
       "/ShareWebServices/Services/Publisher/ReadPublisherLatestGlucoseValues"
       "?sessionId=" + session_id_ + "&minutes=60&maxCount=12";
-  String resp = http_post_(url, "");
 
-  if (resp.startsWith("ERR:")) {
-    // HTTP 500 with SessionNotValid means the session expired.
-    if (resp.indexOf("SessionNotValid") >= 0 || resp.indexOf(":500:") >= 0) {
+  if (!http.begin(client, url)) {
+    out.valid = false;
+    out.error = "HTTP begin failed";
+    return false;
+  }
+  http.addHeader("Content-Type", "application/json");
+  http.addHeader("Accept",       "application/json");
+  http.setTimeout(10000);
+
+  int code = http.POST("");
+
+  if (code != 200) {
+    String body = http.getString();
+    http.end();
+    if (body.indexOf("SessionNotValid") >= 0 || code == 500) {
       session_id_ = "";  // trigger re-auth on next call
     }
-    out.error = resp;
+    Serial.printf("[Dexcom] HTTP %d: %s\n", code, body.c_str());
     out.valid = false;
+    out.error = "HTTP " + String(code);
     return false;
   }
 
+  // Stream directly into ArduinoJson to avoid intermediate String buffer
+  // that can truncate large responses.
   JsonDocument doc;
-  DeserializationError err = deserializeJson(doc, resp);
+  DeserializationError err = deserializeJson(doc, http.getStream());
+  http.end();
+
   if (err) {
     out.valid = false;
     out.error = String("JSON parse error: ") + err.c_str();
     return false;
   }
   if (!doc.is<JsonArray>()) {
+    // Dexcom sometimes returns a JSON error object (e.g. {"Code":"SessionNotValid"})
+    // with HTTP 200 when the session silently expires.
+    const char *code_str = doc["Code"] | "";
+    if (strstr(code_str, "SessionNotValid") || strstr(code_str, "Session")) {
+      session_id_ = "";  // force re-auth
+    }
     out.valid = false;
     out.error = "Unexpected response (not an array)";
     return false;
@@ -174,9 +200,16 @@ bool DexcomSource::read_glucose_(CGMData &out) {
   JsonArray arr = doc.as<JsonArray>();
 
   // Dexcom returns newest reading first.
-  JsonObject latest   = arr[0];
+  JsonObject latest      = arr[0];
   out.current.value_mgdl = latest["Value"] | 0;
-  out.current.trend_code = trend_str_to_code_(latest["Trend"] | "Flat");
+
+  // Trend may be a string ("Flat") or an integer trend code depending on API version.
+  if (latest["Trend"].is<int>()) {
+    out.current.trend_code = latest["Trend"].as<int>();
+  } else {
+    out.current.trend_code = trend_str_to_code_(latest["Trend"] | "Flat");
+  }
+
   out.current.timestamp  = parse_dexcom_time_(latest["WT"] | "");
 
   // Sparkline: reverse array so it's oldest-first for left→right rendering.

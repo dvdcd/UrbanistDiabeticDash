@@ -235,6 +235,7 @@
         <label class="cb-row"><input type="checkbox" name="wave_enhanced" id="n-wave-enhanced" onchange="document.getElementById('wave2-color-row').style.display=this.checked?'':'none'"> Second wave color</label>
         <label class="cb-row"><input type="checkbox" name="wave_tide" id="n-wave-tide" onchange="document.getElementById('tide-strength-row').style.display=this.checked?'':'none'"> Tide = glucose zone</label>
         <label class="cb-row"><input type="checkbox" name="boat_ride" id="n-boat-ride" onchange="document.getElementById('boat-colors-row').style.display=this.checked?'':'none'"> Boat on waves</label>
+        <label class="cb-row"><input type="checkbox" name="boat_duck" id="n-boat-duck" onchange="onDuckToggle(this.checked)"> 🦆 Duck instead</label>
         <label class="cb-row"><input type="checkbox" name="aurora"> Aurora</label>
       </div>
       <div id="wave2-color-row" style="display:none;margin-bottom:8px">
@@ -245,8 +246,8 @@
       </div>
       <div id="boat-colors-row" style="display:none;margin-bottom:8px">
         <div class="row">
-          <label>Hull color <input name="color_boat_hull" type="color" value="#c87828"></label>
-          <label>Sail color <input name="color_boat_sail" type="color" value="#aa8c3c"></label>
+          <label><span id="boat-hull-label">Hull color</span> <input name="color_boat_hull" type="color" value="#c87828"></label>
+          <label><span id="boat-sail-label">Sail color</span> <input name="color_boat_sail" type="color" value="#aa8c3c"></label>
         </div>
       </div>
       <div style="border-top:1px solid #2a2a2a;padding-top:10px;margin-top:4px">
@@ -330,6 +331,24 @@
         });
     }
 
+    function syncBoatColorLabels() {
+      const isDuck = document.querySelector('[name="boat_duck"]')?.checked;
+      const hullLbl = document.getElementById('boat-hull-label');
+      const sailLbl = document.getElementById('boat-sail-label');
+      if (hullLbl) hullLbl.textContent = isDuck ? 'Body color' : 'Hull color';
+      if (sailLbl) sailLbl.textContent = isDuck ? 'Beak color' : 'Sail color';
+    }
+
+    function onDuckToggle(checked) {
+      if (checked) {
+        const hull = document.querySelector('[name="color_boat_hull"]');
+        const sail = document.querySelector('[name="color_boat_sail"]');
+        if (hull) hull.value = '#ffdd00';
+        if (sail) sail.value = '#ff7700';
+      }
+      syncBoatColorLabels();
+    }
+
     function setAllNoct(v) {
       const noctFields = ['show_stars','stars_tint','wave_enhanced','wave_tide','boat_ride','aurora'];
       noctFields.forEach(k => {
@@ -372,7 +391,7 @@
     const CHECKBOX_FIELDS = [
       'clock_24h','show_clock','show_sparkline','sparkline_auto',
       'sparkline_shadow','sparkline_fill','show_age','show_status_label','auto_rotate',
-      'show_stars','stars_tint','wave_enhanced','wave_tide','boat_ride','aurora',
+      'show_stars','stars_tint','wave_enhanced','wave_tide','boat_ride','boat_duck','aurora',
       'auto_update',
     ];
 
@@ -392,6 +411,7 @@
         if (cfg.wave_enhanced) document.getElementById('wave2-color-row').style.display = '';
         if (cfg.wave_tide)     document.getElementById('tide-strength-row').style.display = '';
         if (cfg.boat_ride)     document.getElementById('boat-colors-row').style.display = '';
+        syncBoatColorLabels();
         if (cfg.tide_strength !== undefined)
           document.getElementById('tide-str-val').textContent = cfg.tide_strength;
       })

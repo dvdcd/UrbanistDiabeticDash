@@ -110,6 +110,7 @@ void DashWebServer::begin() {
     doc["tide_strength"]      = cfg.tide_strength;
     doc["stars_tint"]         = cfg.stars_tint;
     doc["boat_ride"]          = cfg.boat_ride;
+    doc["boat_duck"]          = cfg.boat_duck;
     doc["aurora"]             = cfg.aurora;
     doc["auto_update"]        = cfg.auto_update;
     // Colors as #rrggbb hex strings (safe for HTML color inputs).
@@ -218,6 +219,7 @@ void DashWebServer::begin() {
       if (doc["tide_strength"].is<int>())     cfg.tide_strength    = doc["tide_strength"].as<int>();
       if (doc["stars_tint"].is<bool>())       cfg.stars_tint       = doc["stars_tint"].as<bool>();
       if (doc["boat_ride"].is<bool>())        cfg.boat_ride        = doc["boat_ride"].as<bool>();
+      if (doc["boat_duck"].is<bool>())        cfg.boat_duck        = doc["boat_duck"].as<bool>();
       if (doc["aurora"].is<bool>())           cfg.aurora           = doc["aurora"].as<bool>();
       if (doc["auto_update"].is<bool>())      cfg.auto_update      = doc["auto_update"].as<bool>();
       // Colors — client sends "#rrggbb"; convert to packed uint32_t.

@@ -52,6 +52,7 @@ struct DashConfig {
   int  tide_strength    = 75;     // 0=no tide effect, 100=full effect
   bool stars_tint       = false;  // horizon glow: lower stars blended toward wave color
   bool boat_ride        = false;  // small boat sprite bobbing on wave surface
+  bool boat_duck        = false;  // use yellow duck sprite instead of sailboat
   bool aurora           = false;  // faint teal/violet aurora bands in content background
   // OTA
   bool auto_update      = false;  // check GitHub on boot and flash if newer

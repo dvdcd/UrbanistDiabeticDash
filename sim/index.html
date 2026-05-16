@@ -305,6 +305,7 @@
              Second wave color</label>
       <label><input type="checkbox" id="n-wave_tide"    onchange="noctTideChanged(this.checked)"> Tide = glucose zone</label>
       <label><input type="checkbox" id="n-boat_ride"    onchange="noctBoatChanged(this.checked)"> Boat on the waves</label>
+      <label><input type="checkbox" id="n-boat_duck"   onchange="noctDuckChanged(this.checked)"> 🦆 Duck instead</label>
       <label><input type="checkbox" id="n-stars_tint"   onchange="noct.stars_tint=this.checked"> Star horizon tint</label>
       <label><input type="checkbox" id="n-aurora"       onchange="noct.aurora=this.checked"> Aurora</label>
       <label></label>
@@ -333,16 +334,16 @@
       </label>
     </div>
 
-    <!-- Boat colors — conditional -->
+    <!-- Boat/duck colors — conditional -->
     <div id="boat-colors-row" style="display:none;margin-bottom:12px">
       <div class="row">
         <label style="color:#7bb">
-          Hull color
+          <span id="boat-hull-label">Hull color</span>
           <input name="color_boat_hull" type="color" value="#c87828"
                  oninput="cfg.color_boat_hull=parseInt(this.value.slice(1),16)">
         </label>
         <label style="color:#7bb">
-          Sail color
+          <span id="boat-sail-label">Sail color</span>
           <input name="color_boat_sail" type="color" value="#aa8c3c"
                  oninput="cfg.color_boat_sail=parseInt(this.value.slice(1),16)">
         </label>
@@ -407,6 +408,7 @@ const noct = {
   stars_tint:    false,
   aurora:        false,
   boat_ride:     false,
+  boat_duck:     false,
 };
 
 function setAllNoct(v) {
@@ -432,6 +434,26 @@ function noctTideChanged(checked) {
 function noctBoatChanged(checked) {
   noct.boat_ride = checked;
   document.getElementById('boat-colors-row').style.display = checked ? '' : 'none';
+  syncBoatColorLabels();
+}
+
+function noctDuckChanged(checked) {
+  noct.boat_duck = checked;
+  if (checked) {
+    cfg.color_boat_hull = 0xFFDD00;
+    cfg.color_boat_sail = 0xFF7700;
+    document.querySelector('[name=color_boat_hull]').value = '#ffdd00';
+    document.querySelector('[name=color_boat_sail]').value = '#ff7700';
+  }
+  syncBoatColorLabels();
+}
+
+function syncBoatColorLabels() {
+  const isDuck = noct.boat_duck;
+  const hullLbl = document.getElementById('boat-hull-label');
+  const sailLbl = document.getElementById('boat-sail-label');
+  if (hullLbl) hullLbl.textContent = isDuck ? 'Body color' : 'Hull color';
+  if (sailLbl) sailLbl.textContent = isDuck ? 'Beak color' : 'Sail color';
 }
 
 function applyOceanPalette() {
@@ -660,23 +682,29 @@ function drawStatusBar(sr, sg, sb, t) {
     }
   }
 
-  // Boat: right-triangle sail (right side = mast) + raft at waterline
+  // Boat or duck sprite bobbing on wave surface
   if (noct.boat_ride) {
     const bx = 62;
     const by = WAVE_Y + Math.floor(surfaces[bx]);
     const [hr,hg,hb] = unpack(cfg.color_boat_hull);
     const [saR,saG,saB] = unpack(cfg.color_boat_sail);
 
-    // Raft (7px, centered, edge-shaded)
-    drawShaded(bx-3, bx+3, by, hr, hg, hb);
-
-    // Sail: right-triangle, vertical right edge (mast), hypotenuse left
-    // Base row (5px): bx-2..bx+2
-    drawShaded(bx-2, bx+2, by-2, saR, saG, saB);
-    // Mid row (3px, right-aligned): bx..bx+2
-    drawShaded(bx, bx+2, by-3, saR, saG, saB);
-    // Tip (1px = mast top): bx+2
-    setPixel(bx+2, by-4, Math.round(saR*0.5), Math.round(saG*0.5), Math.round(saB*0.5));
+    if (noct.boat_duck) {
+      // Duck: round body + head shifted right + beak pixel
+      drawShaded(bx-2, bx+2, by,   hr, hg, hb);   // body base: 5px
+      drawShaded(bx-3, bx+3, by-1, hr, hg, hb);   // body widest: 7px
+      drawShaded(bx-2, bx+2, by-2, hr, hg, hb);   // body upper: 5px
+      drawShaded(bx+1, bx+3, by-3, hr, hg, hb);   // neck/head base: 3px
+      drawShaded(bx,   bx+3, by-4, hr, hg, hb);   // head: 4px
+      setPixel(bx+4, by-3, saR, saG, saB);          // beak
+      setPixel(bx+2, by-4, Math.round(hr/8), Math.round(hg/8), Math.round(hb/8)); // eye
+    } else {
+      // Sailboat: right-triangle sail (right side = mast) + raft at waterline
+      drawShaded(bx-3, bx+3, by, hr, hg, hb);
+      drawShaded(bx-2, bx+2, by-2, saR, saG, saB);
+      drawShaded(bx, bx+2, by-3, saR, saG, saB);
+      setPixel(bx+2, by-4, Math.round(saR*0.5), Math.round(saG*0.5), Math.round(saB*0.5));
+    }
   }
 }
 
@@ -898,6 +926,7 @@ function copyConfig() {
     color_boat_hull:hex(cfg.color_boat_hull), color_boat_sail:hex(cfg.color_boat_sail),
     wave_enhanced:noct.wave_enhanced, wave_tide:noct.wave_tide,
     stars_tint:noct.stars_tint, aurora:noct.aurora, boat_ride:noct.boat_ride,
+    boat_duck:noct.boat_duck,
   };
   navigator.clipboard.writeText(JSON.stringify(out,null,2)).catch(()=>{
     prompt('Copy this config JSON:',JSON.stringify(out,null,2));
@@ -924,11 +953,12 @@ function importConfig(input) {
       }
     });
     // Apply noct flags
-    ['wave_enhanced','wave_tide','stars_tint','aurora','boat_ride'].forEach(k => {
+    ['wave_enhanced','wave_tide','stars_tint','aurora','boat_ride','boat_duck'].forEach(k => {
       if (d[k] !== undefined) noct[k] = !!d[k];
       const el = document.getElementById('n-'+k);
       if (el) el.checked = noct[k];
     });
+    syncBoatColorLabels();
     // Sync n-show_wave and n-show_stars from cfg
     const showWaveEl = document.getElementById('n-show_wave');
     if (showWaveEl) showWaveEl.checked = cfg.status_bar_style === 0;

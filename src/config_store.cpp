@@ -32,11 +32,22 @@ bool ConfigStore::load(DashConfig &out) {
   out.auto_rotate       = prefs.getBool(  "auto_rot",   true);
   out.show_status_label = prefs.getBool(  "show_lbl",   true);
   out.show_stars        = prefs.getBool(  "stars",      true);
-  out.show_seafoam      = prefs.getBool(  "seafoam",    true);
   out.color_low         = prefs.getUInt(  "clr_low",    0xFF2200);
   out.color_warn        = prefs.getUInt(  "clr_warn",   0xFFCC00);
   out.color_ok          = prefs.getUInt(  "clr_ok",     0x00CC44);
   out.color_wave        = prefs.getUInt(  "clr_wave",   0x0035D2);
+  out.wave_enhanced     = prefs.getBool(  "wave_enh",   false);
+  out.wave_tide         = prefs.getBool(  "wave_tide",  false);
+  out.stars_const       = prefs.getBool(  "st_const",   false);
+  out.stars_tint        = prefs.getBool(  "st_tint",    false);
+  out.sparkline_wake    = prefs.getBool(  "sp_wake",    false);
+  out.sparkline_sonar   = prefs.getBool(  "sp_sonar",   false);
+  out.palette_noct      = prefs.getBool(  "pal_noct",   false);
+  out.arrows_bearing    = prefs.getBool(  "arr_bear",   false);
+  out.aurora            = prefs.getBool(  "aurora",     false);
+  out.alert_sweep       = prefs.getBool(  "alt_swp",    false);
+  out.glucose_frame     = prefs.getBool(  "glc_frm",    false);
+  out.clock_chrono      = prefs.getBool(  "clk_chrn",   false);
   prefs.end();
   return out.wifi_ssid.length() > 0;
 }
@@ -70,11 +81,22 @@ void ConfigStore::save(const DashConfig &c) {
   prefs.putBool(  "auto_rot",    c.auto_rotate);
   prefs.putBool(  "show_lbl",    c.show_status_label);
   prefs.putBool(  "stars",       c.show_stars);
-  prefs.putBool(  "seafoam",     c.show_seafoam);
   prefs.putUInt(  "clr_low",     c.color_low);
   prefs.putUInt(  "clr_warn",    c.color_warn);
   prefs.putUInt(  "clr_ok",      c.color_ok);
   prefs.putUInt(  "clr_wave",    c.color_wave);
+  prefs.putBool(  "wave_enh",    c.wave_enhanced);
+  prefs.putBool(  "wave_tide",   c.wave_tide);
+  prefs.putBool(  "st_const",    c.stars_const);
+  prefs.putBool(  "st_tint",     c.stars_tint);
+  prefs.putBool(  "sp_wake",     c.sparkline_wake);
+  prefs.putBool(  "sp_sonar",    c.sparkline_sonar);
+  prefs.putBool(  "pal_noct",    c.palette_noct);
+  prefs.putBool(  "arr_bear",    c.arrows_bearing);
+  prefs.putBool(  "aurora",      c.aurora);
+  prefs.putBool(  "alt_swp",     c.alert_sweep);
+  prefs.putBool(  "glc_frm",     c.glucose_frame);
+  prefs.putBool(  "clk_chrn",    c.clock_chrono);
   prefs.end();
 }
 

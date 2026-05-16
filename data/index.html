@@ -234,13 +234,6 @@
           <option value="false">Off</option>
         </select>
       </label>
-      <label>
-        Wave seafoam
-        <select name="show_seafoam">
-          <option value="true">On</option>
-          <option value="false">Off</option>
-        </select>
-      </label>
     </section>
 
     <section>
@@ -267,11 +260,64 @@
       </div>
     </section>
 
+    <section>
+      <h2 style="color:#2a9aaa">✦ Noctiluca Theme</h2>
+      <p style="font-size:12px;color:#555;margin:0 0 10px">Bioluminescent night-ocean visuals. All features are off by default and independently toggleable.</p>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <button type="button" style="flex:1;font-size:12px;padding:6px;background:#0f2a30" onclick="setAllNoct(true)">Enable All</button>
+        <button type="button" style="flex:1;font-size:12px;padding:6px;background:#2a2a2a" onclick="setAllNoct(false)">Disable All</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:13px">
+        <label><input type="checkbox" name="wave_enhanced"> Abyssal wave (depth + reflections + particles)</label>
+        <label><input type="checkbox" name="wave_tide"> Tide encodes glucose zone</label>
+        <label><input type="checkbox" name="stars_const"> Constellation anchor stars</label>
+        <label><input type="checkbox" name="stars_tint"> Horizon glow on lower stars</label>
+        <label><input type="checkbox" name="sparkline_wake"> Wake trail + abyss under chart</label>
+        <label><input type="checkbox" name="sparkline_sonar"> Sonar phosphor persistence</label>
+        <label><input type="checkbox" name="palette_noct"> Bioluminescent color palette</label>
+        <label><input type="checkbox" name="arrows_bearing"> Navigation bearing arrows</label>
+        <label><input type="checkbox" name="aurora"> Aurora bands in background</label>
+        <label><input type="checkbox" name="alert_sweep"> Bioluminescent alert sweep</label>
+        <label><input type="checkbox" name="glucose_frame"> Instrument frame around glucose</label>
+        <label><input type="checkbox" name="clock_chrono"> Chronometer pixel font clock</label>
+      </div>
+    </section>
+
     <button type="submit">Save &amp; Restart</button>
   </form>
 
+  <section id="ota-card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <h2 style="margin:0">Firmware Update</h2>
+    </div>
+    <div style="font-size:12px;color:#555;margin-bottom:14px">
+      Version: <span id="ota-current" style="color:#888;font-family:'Courier New',monospace">—</span>
+    </div>
+    <button type="button" onclick="otaCheck()">Check for Update</button>
+    <div id="ota-status" style="font-size:13px;min-height:1.2em;margin:8px 0"></div>
+    <button type="button" id="ota-update-btn" onclick="otaUpdate()"
+            style="display:none;background:#d97706">Update Now</button>
+    <div id="ota-log-wrap" style="display:none;margin-top:12px">
+      <div style="font-size:11px;color:#555;margin-bottom:4px">Update log</div>
+      <div id="ota-log"
+           style="background:#0a0a0a;color:#5d5;font-family:'Courier New',monospace;
+                  font-size:11px;padding:8px;border-radius:6px;height:140px;
+                  overflow-y:auto;white-space:pre-wrap;border:1px solid #222"></div>
+    </div>
+  </section>
+
+  <div style="display:flex;gap:10px;margin-bottom:4px">
+    <button type="button" id="export-btn" onclick="exportConfig()"
+            style="flex:1;background:#2a2a2a">Export Config</button>
+    <label style="flex:1;margin:0">
+      <button type="button" style="width:100%;background:#2a2a2a"
+              onclick="document.getElementById('import-file').click()">Import Config</button>
+      <input type="file" id="import-file" accept=".json" style="display:none"
+             onchange="importConfig(this)">
+    </label>
+  </div>
   <button type="button" id="reset-btn" class="danger">Factory Reset</button>
-  <a href="/update" id="update-link">Update firmware</a>
+  <a href="/update" id="update-link">Manual firmware upload</a>
 
   <p id="status" aria-live="polite"></p>
 
@@ -314,7 +360,7 @@
                          'cgm_source','pulse_speed','pulse_min','wave_speed','status_bar_style'];
     const BOOL_FIELDS = ['dexcom_region_us','unit_mgdl','clock_24h','show_sparkline',
                          'sparkline_auto','show_age','auto_rotate','show_status_label',
-                         'show_stars','show_seafoam'];
+                         'show_stars'];
 
     document.getElementById('form').addEventListener('submit', e => {
       e.preventDefault();
@@ -413,6 +459,120 @@
 
     fetchStatus();
     setInterval(fetchStatus, 15000);
+
+    // ── Cloud OTA ─────────────────────────────────────────────────────────────
+    let otaLatest = null;
+
+    function otaSetStatus(msg, color) {
+      const el = document.getElementById('ota-status');
+      el.textContent = msg;
+      el.style.color = color || '#888';
+    }
+
+    function otaCheck() {
+      document.getElementById('ota-update-btn').style.display = 'none';
+      otaSetStatus('Checking…', '#888');
+      fetch('/ota/check')
+        .then(r => r.json())
+        .then(data => {
+          if (data.error) { otaSetStatus('Check failed: ' + data.error, '#ef4444'); return; }
+          document.getElementById('ota-current').textContent = data.current || '—';
+          if (data.update_available) {
+            otaLatest = data.latest;
+            otaSetStatus('Update available: ' + data.latest, '#f59e0b');
+            document.getElementById('ota-update-btn').style.display = '';
+          } else {
+            otaSetStatus('Up to date (' + data.current + ')', '#10b981');
+          }
+        })
+        .catch(() => otaSetStatus('Network error.', '#ef4444'));
+    }
+
+    function otaUpdate() {
+      if (!confirm('Flash firmware ' + (otaLatest || '') + '?\n\nSettings are preserved. The device will restart when done.')) return;
+      document.getElementById('ota-update-btn').disabled = true;
+      otaSetStatus('Downloading and flashing — do not close this page…', '#f59e0b');
+      const logEl   = document.getElementById('ota-log');
+      const logWrap = document.getElementById('ota-log-wrap');
+      logWrap.style.display = '';
+      logEl.textContent = '';
+
+      const pollLog = setInterval(() => {
+        fetch('/logs').then(r => r.text()).then(t => {
+          logEl.textContent = t;
+          logEl.scrollTop = logEl.scrollHeight;
+          if (t.includes('Flash OK')) {
+            clearInterval(pollLog);
+            otaSetStatus('Done! Device is restarting — reconnect in a few seconds.', '#10b981');
+          } else if (t.includes('FAILED')) {
+            clearInterval(pollLog);
+            otaSetStatus('Update failed — see log above.', '#ef4444');
+            document.getElementById('ota-update-btn').disabled = false;
+          }
+        }).catch(() => {
+          clearInterval(pollLog);
+          otaSetStatus('Device restarted — reconnect in a few seconds.', '#10b981');
+        });
+      }, 1500);
+
+      fetch('/ota/update', { method: 'POST' })
+        .then(r => r.json())
+        .then(data => { if (!data.ok) { clearInterval(pollLog); otaSetStatus(data.error, '#ef4444'); } })
+        .catch(() => {});
+    }
+
+    // Show embedded version on page load (no network hop to GitHub)
+    fetch('/ota/version')
+      .then(r => r.json())
+      .then(data => { if (data.version) document.getElementById('ota-current').textContent = data.version; })
+      .catch(() => {});
+
+    function setAllNoct(v) {
+      ['wave_enhanced','wave_tide','stars_const','stars_tint','sparkline_wake',
+       'sparkline_sonar','palette_noct','arrows_bearing','aurora','alert_sweep',
+       'glucose_frame','clock_chrono'].forEach(name => {
+        const el = document.querySelector('[name="'+name+'"]');
+        if (el) el.checked = v;
+      });
+    }
+
+    // ── Config export / import ────────────────────────────────────────────────
+    function exportConfig() {
+      fetch('/config')
+        .then(r => r.json())
+        .then(data => {
+          const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = 'diabdash-config.json';
+          a.click();
+          URL.revokeObjectURL(a.href);
+        })
+        .catch(() => setStatus('Export failed — device unreachable.', true));
+    }
+
+    function importConfig(input) {
+      const file = input.files[0];
+      if (!file) return;
+      input.value = '';
+      const reader = new FileReader();
+      reader.onload = e => {
+        let parsed;
+        try { parsed = JSON.parse(e.target.result); }
+        catch { setStatus('Invalid JSON file.', true); return; }
+        if (!confirm('Apply imported config? This will save settings and restart the device.')) return;
+        setStatus('Importing…', false);
+        fetch('/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(parsed)
+        })
+          .then(r => r.json())
+          .then(d => setStatus(d.ok ? 'Config imported — device restarting…' : ('Error: ' + (d.error || 'unknown')), !d.ok))
+          .catch(() => setStatus('Import failed — device unreachable.', true));
+      };
+      reader.readAsText(file);
+    }
   </script>
 </body>
 </html>

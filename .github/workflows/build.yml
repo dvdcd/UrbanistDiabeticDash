@@ -38,7 +38,16 @@ jobs:
       - name: Install PlatformIO
         run: pip install platformio
 
+      - name: Compute version
+        run: |
+          VERSION="$(date -u +%Y%m%d)-$(git rev-parse --short HEAD)"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
       - name: Build firmware
+        env:
+          PLATFORMIO_BUILD_FLAGS: >-
+            -DBOARD_HAS_PSRAM -mfix-esp32-psram-cache-issue -std=gnu++17
+            -DFIRMWARE_VERSION='"${{ env.VERSION }}"'
         run: pio run
 
       - name: Build LittleFS filesystem image
@@ -51,16 +60,10 @@ jobs:
           cp .pio/build/matrix-portal-s3/bootloader.bin installer/bootloader.bin
           cp .pio/build/matrix-portal-s3/partitions.bin installer/partitions.bin
 
-      - name: Inject version into manifests and HTML
+      - name: Stamp version into manifests and HTML
         run: |
-          VERSION="$(date -u +%Y%m%d)-$(git rev-parse --short HEAD)"
-          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
-
-          # Update manifest versions
           jq --arg v "$VERSION" '.version = $v' installer/manifest.json        > /tmp/m1.json && mv /tmp/m1.json installer/manifest.json
           jq --arg v "$VERSION" '.version = $v' installer/manifest-update.json > /tmp/m2.json && mv /tmp/m2.json installer/manifest-update.json
-
-          # Stamp version placeholder in installer and sim pages
           sed -i "s/__VERSION__/$VERSION/g" installer/index.html
           sed -i "s/__VERSION__/$VERSION/g" sim/index.html
 

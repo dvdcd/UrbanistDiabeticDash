@@ -2,8 +2,12 @@
 #include <LittleFS.h>
 #include <ArduinoJson.h>
 #include <Update.h>
+#include <HTTPClient.h>
+#include <HTTPUpdate.h>
 #include <WiFi.h>
+#include <WiFiClientSecure.h>
 #include <stdarg.h>
+#include "version.h"
 
 // ── OTA log ring buffer + safety flag ────────────────────────────────────────
 static String s_ota_log;
@@ -11,6 +15,13 @@ static constexpr size_t OTA_LOG_MAX = 4096;
 // Set true when we detect a bad upload; blocks Update.end() so a corrupt
 // binary is never committed as the next boot target.
 static bool s_ota_bad = false;
+
+static const char *OTA_MANIFEST_URL =
+    "https://raw.githubusercontent.com/dvdcd/UrbanistDiabeticDash"
+    "/main/installer/manifest-update.json";
+static const char *OTA_FIRMWARE_URL =
+    "https://raw.githubusercontent.com/dvdcd/UrbanistDiabeticDash"
+    "/main/installer/firmware.bin";
 
 static void ota_log(const char *fmt, ...) {
   char tmp[256];
@@ -89,7 +100,19 @@ void DashWebServer::begin() {
     doc["auto_rotate"]        = cfg.auto_rotate;
     doc["show_status_label"]  = cfg.show_status_label;
     doc["show_stars"]         = cfg.show_stars;
-    doc["show_seafoam"]       = cfg.show_seafoam;
+    // Noctiluca theme
+    doc["wave_enhanced"]      = cfg.wave_enhanced;
+    doc["wave_tide"]          = cfg.wave_tide;
+    doc["stars_const"]        = cfg.stars_const;
+    doc["stars_tint"]         = cfg.stars_tint;
+    doc["sparkline_wake"]     = cfg.sparkline_wake;
+    doc["sparkline_sonar"]    = cfg.sparkline_sonar;
+    doc["palette_noct"]       = cfg.palette_noct;
+    doc["arrows_bearing"]     = cfg.arrows_bearing;
+    doc["aurora"]             = cfg.aurora;
+    doc["alert_sweep"]        = cfg.alert_sweep;
+    doc["glucose_frame"]      = cfg.glucose_frame;
+    doc["clock_chrono"]       = cfg.clock_chrono;
     // Colors as #rrggbb hex strings (safe for HTML color inputs).
     char cbuf[8];
     snprintf(cbuf, sizeof(cbuf), "#%06lx", (unsigned long)cfg.color_low);
@@ -179,8 +202,19 @@ void DashWebServer::begin() {
         cfg.show_status_label   = doc["show_status_label"].as<bool>();
       if (doc["show_stars"].is<bool>())
         cfg.show_stars          = doc["show_stars"].as<bool>();
-      if (doc["show_seafoam"].is<bool>())
-        cfg.show_seafoam        = doc["show_seafoam"].as<bool>();
+      // Noctiluca theme
+      if (doc["wave_enhanced"].is<bool>())   cfg.wave_enhanced   = doc["wave_enhanced"].as<bool>();
+      if (doc["wave_tide"].is<bool>())       cfg.wave_tide       = doc["wave_tide"].as<bool>();
+      if (doc["stars_const"].is<bool>())     cfg.stars_const     = doc["stars_const"].as<bool>();
+      if (doc["stars_tint"].is<bool>())      cfg.stars_tint      = doc["stars_tint"].as<bool>();
+      if (doc["sparkline_wake"].is<bool>())  cfg.sparkline_wake  = doc["sparkline_wake"].as<bool>();
+      if (doc["sparkline_sonar"].is<bool>()) cfg.sparkline_sonar = doc["sparkline_sonar"].as<bool>();
+      if (doc["palette_noct"].is<bool>())    cfg.palette_noct    = doc["palette_noct"].as<bool>();
+      if (doc["arrows_bearing"].is<bool>())  cfg.arrows_bearing  = doc["arrows_bearing"].as<bool>();
+      if (doc["aurora"].is<bool>())          cfg.aurora          = doc["aurora"].as<bool>();
+      if (doc["alert_sweep"].is<bool>())     cfg.alert_sweep     = doc["alert_sweep"].as<bool>();
+      if (doc["glucose_frame"].is<bool>())   cfg.glucose_frame   = doc["glucose_frame"].as<bool>();
+      if (doc["clock_chrono"].is<bool>())    cfg.clock_chrono    = doc["clock_chrono"].as<bool>();
       // Colors — client sends "#rrggbb"; convert to packed uint32_t.
       auto parse_hex_color = [](const String &s) -> uint32_t {
         String h = s.startsWith("#") ? s.substring(1) : s;
@@ -201,6 +235,62 @@ void DashWebServer::begin() {
       if (restart_cb_) restart_cb_();
     }
   );
+
+  // ── GET /ota/version — returns embedded firmware version instantly ──────────
+  server_.on("/ota/version", HTTP_GET, [](AsyncWebServerRequest *req) {
+    req->send(200, "application/json",
+              "{\"version\":\"" FIRMWARE_VERSION "\"}");
+  });
+
+  // ── GET /ota/check — fetches manifest from GitHub, compares versions ────────
+  // NOTE: HTTPClient is synchronous; this blocks the async task for ~1–5 s
+  // while fetching over HTTPS. The main loop() is unaffected. Other web
+  // requests queue during this window, which is fine for a single-user UI.
+  server_.on("/ota/check", HTTP_GET, [](AsyncWebServerRequest *req) {
+    WiFiClientSecure client;
+    client.setInsecure();
+    HTTPClient http;
+    if (!http.begin(client, OTA_MANIFEST_URL)) {
+      req->send(503, "application/json", "{\"error\":\"http.begin failed\"}");
+      return;
+    }
+    http.setTimeout(8000);
+    int code = http.GET();
+    if (code != 200) {
+      String msg = "{\"error\":\"fetch failed HTTP " + String(code) + "\"}";
+      http.end();
+      req->send(502, "application/json", msg);
+      return;
+    }
+    String body = http.getString();
+    http.end();
+
+    JsonDocument manifest;
+    if (deserializeJson(manifest, body)) {
+      req->send(502, "application/json", "{\"error\":\"parse failed\"}");
+      return;
+    }
+    const char *latest  = manifest["version"] | "";
+    const char *current = FIRMWARE_VERSION;
+    JsonDocument resp;
+    resp["current"]          = current;
+    resp["latest"]           = latest;
+    resp["update_available"] = (strlen(latest) > 0 && strcmp(current, latest) != 0);
+    String json; serializeJson(resp, json);
+    req->send(200, "application/json", json);
+  });
+
+  // ── POST /ota/update — queues a cloud OTA download; runs from loop() ────────
+  server_.on("/ota/update", HTTP_POST, [this](AsyncWebServerRequest *req) {
+    if (ota_update_pending_) {
+      req->send(409, "application/json", "{\"error\":\"already in progress\"}");
+      return;
+    }
+    s_ota_log = "";
+    ota_log("[OTA-cloud] Update queued\n");
+    ota_update_pending_ = true;
+    req->send(200, "application/json", "{\"ok\":true}");
+  });
 
   // ── GET /update — firmware upload page ────────────────────────────────────
   server_.on("/update", HTTP_GET, [](AsyncWebServerRequest *req) {
@@ -396,4 +486,38 @@ void DashWebServer::push_status(bool valid, const String &error, int value_mgdl)
   status_error_   = error;
   status_mgdl_    = value_mgdl;
   status_push_ms_ = millis();
+}
+
+void DashWebServer::run_ota_if_pending() {
+  if (!ota_update_pending_) return;
+  ota_update_pending_ = false;
+
+  ota_log("[OTA-cloud] Downloading from GitHub...\n");
+  WiFiClientSecure client;
+  client.setInsecure();
+
+  httpUpdate.rebootOnUpdate(false);
+  httpUpdate.onProgress([](int cur, int total) {
+    static int last_kb = 0;
+    int kb = cur >> 10;
+    if (kb - last_kb >= 64 || cur == total) {
+      ota_log("[OTA-cloud] %d / %d KB\n", kb, total >> 10);
+      last_kb = kb;
+    }
+  });
+
+  t_httpUpdate_return result = httpUpdate.update(client, OTA_FIRMWARE_URL);
+  switch (result) {
+    case HTTP_UPDATE_OK:
+      ota_log("[OTA-cloud] Flash OK — restarting\n");
+      if (restart_cb_) restart_cb_();
+      break;
+    case HTTP_UPDATE_NO_UPDATES:
+      ota_log("[OTA-cloud] Server says no update available\n");
+      break;
+    case HTTP_UPDATE_FAILED:
+      ota_log("[OTA-cloud] FAILED: %s\n",
+              httpUpdate.getLastErrorString().c_str());
+      break;
+  }
 }

@@ -142,6 +142,8 @@ void setup() {
 // ── Loop ──────────────────────────────────────────────────────────────────────
 
 void loop() {
+  if (web_server) web_server->run_ota_if_pending();
+
   // Deferred restart (set by web server callback so we don't restart inside
   // an async HTTP handler).
   if (should_restart) {

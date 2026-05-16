@@ -35,12 +35,24 @@ struct DashConfig {
   bool      auto_rotate        = true;
   bool      show_status_label  = true;
   bool      show_stars         = true;   // twinkle stars in background
-  bool      show_seafoam       = true;   // whitecaps on wave crest
   // Colors (packed 0x00RRGGBB)
   uint32_t  color_low          = 0xFF2200;  // low/high alert
   uint32_t  color_warn         = 0xFFCC00;  // warning threshold
   uint32_t  color_ok           = 0x00CC44;  // in-range
   uint32_t  color_wave         = 0x0035D2;  // wave base color
+  // Noctiluca theme (all optional, off by default)
+  bool wave_enhanced    = false;  // abyssal depth gradient + starlight reflection + plankton particles
+  bool wave_tide        = false;  // wave amplitude/baseline encodes glucose zone (calm → rough)
+  bool stars_const      = false;  // hand-placed constellation anchor stars
+  bool stars_tint       = false;  // horizon glow: lower stars blended toward wave color
+  bool sparkline_wake   = false;  // wake trail below line + abyss gradient fill
+  bool sparkline_sonar  = false;  // phosphor persistence — previous frame ghosted at 25%
+  bool palette_noct     = false;  // bioluminescent palette: aqua / amber-gold / coral
+  bool arrows_bearing   = false;  // thick shafts + filled diamond heads
+  bool aurora           = false;  // faint teal/violet aurora bands in content background
+  bool alert_sweep      = false;  // bioluminescent flash sweeps L→R on each alert pulse
+  bool glucose_frame    = false;  // thin instrument frame above/below glucose number
+  bool clock_chrono     = false;  // 3×5 chronometer pixel font for clock
 };
 
 class ConfigStore {

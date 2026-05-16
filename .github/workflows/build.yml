@@ -5,6 +5,10 @@ on:
     branches: [main]
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -43,11 +47,10 @@ jobs:
           VERSION="$(date -u +%Y%m%d)-$(git rev-parse --short HEAD)"
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
 
+      - name: Stamp version header
+        run: printf '#pragma once\n#define FIRMWARE_VERSION "%s"\n' "$VERSION" > include/version.h
+
       - name: Build firmware
-        env:
-          PLATFORMIO_BUILD_FLAGS: >-
-            -DBOARD_HAS_PSRAM -mfix-esp32-psram-cache-issue -std=gnu++17
-            -DFIRMWARE_VERSION='"${{ env.VERSION }}"'
         run: pio run
 
       - name: Build LittleFS filesystem image

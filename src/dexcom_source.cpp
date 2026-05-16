@@ -155,9 +155,19 @@ bool DexcomSource::read_glucose_(CGMData &out) {
 
   JsonDocument doc;
   DeserializationError err = deserializeJson(doc, resp);
-  if (err || !doc.is<JsonArray>() || doc.size() == 0) {
-    out.error = "JSON parse error";
+  if (err) {
     out.valid = false;
+    out.error = String("JSON parse error: ") + err.c_str();
+    return false;
+  }
+  if (!doc.is<JsonArray>()) {
+    out.valid = false;
+    out.error = "Unexpected response (not an array)";
+    return false;
+  }
+  if (doc.size() == 0) {
+    out.valid = false;
+    out.error = "No data";
     return false;
   }
 

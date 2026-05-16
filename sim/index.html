@@ -97,11 +97,12 @@
     /* Noctiluca section */
     #noct-section { border-color: #1a3a4a; background: #0f1c22; }
     #noct-section h2 { color: #2a9aaa; letter-spacing: 1px; }
+    #noct-section label { color: #7bb; }
     .noct-actions { display: flex; gap: 6px; margin-bottom: 10px; }
     .noct-actions button { margin-bottom: 0; padding: 7px; font-size: 12px; }
     .noct-grid {
       display: grid; grid-template-columns: 1fr 1fr;
-      gap: 5px 14px;
+      gap: 5px 14px; margin-bottom: 12px;
     }
     .noct-grid label {
       display: flex; align-items: center; gap: 7px;
@@ -110,6 +111,9 @@
     .noct-grid input[type=checkbox] {
       width: auto; margin: 0; padding: 0; height: auto;
       accent-color: #2a9aaa; cursor: pointer;
+    }
+    .noct-sub {
+      border-top: 1px solid #1a3a4a; margin-top: 12px; padding-top: 12px;
     }
   </style>
 </head>
@@ -209,27 +213,19 @@
     </label>
     <label>
       Status bar
-      <select name="status_bar_style" id="bar-style-sel"
-              onchange="cfg.status_bar_style=+this.value; applyBarVis()">
+      <select name="status_bar_style"
+              onchange="cfg.status_bar_style=+this.value">
         <option value="0">Animated wave</option>
         <option value="1">Solid color</option>
         <option value="2">Off</option>
       </select>
     </label>
-    <label id="wave-speed-row">
-      Wave speed
-      <select name="wave_speed" onchange="cfg.wave_speed=+this.value">
-        <option value="0">Slow</option>
-        <option value="1" selected>Normal</option>
-        <option value="2">Fast</option>
-      </select>
-    </label>
     <label>
       Alert pulse speed
       <select name="pulse_speed" onchange="cfg.pulse_speed=+this.value">
-        <option value="0">Slow (0.5 Hz)</option>
-        <option value="1" selected>Normal (1 Hz)</option>
-        <option value="2">Fast (2 Hz)</option>
+        <option value="0">Very slow (0.25 Hz)</option>
+        <option value="1" selected>Slow (0.5 Hz)</option>
+        <option value="2">Normal (1 Hz)</option>
       </select>
     </label>
     <label>
@@ -251,6 +247,18 @@
         <option value="true">Auto-fit</option>
       </select>
     </label>
+    <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+      <input type="checkbox" name="sparkline_wake"
+             style="width:auto;margin:0;padding:0;height:auto;accent-color:#2563eb"
+             onchange="cfg.sparkline_wake=this.checked">
+      Sparkline wake trail
+    </label>
+    <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+      <input type="checkbox" name="sparkline_sonar"
+             style="width:auto;margin:0;padding:0;height:auto;accent-color:#2563eb"
+             onchange="cfg.sparkline_sonar=this.checked">
+      Sonar trail (phosphor ghost)
+    </label>
     <label>
       Reading age indicator
       <select name="show_age" onchange="cfg.show_age=this.value==='true'">
@@ -270,13 +278,6 @@
       <select name="auto_rotate">
         <option value="true">Enabled</option>
         <option value="false">Disabled</option>
-      </select>
-    </label>
-    <label>
-      Twinkling stars
-      <select name="show_stars" onchange="cfg.show_stars=this.value==='true'">
-        <option value="true">On</option>
-        <option value="false">Off</option>
       </select>
     </label>
   </section>
@@ -301,15 +302,10 @@
         <input name="color_ok" type="color" value="#00cc44"
                oninput="cfg.color_ok=parseInt(this.value.slice(1),16)">
       </label>
-      <label>
-        Wave base color
-        <input name="color_wave" type="color" value="#0035d2"
-               oninput="cfg.color_wave=parseInt(this.value.slice(1),16)">
-      </label>
     </div>
   </section>
 
-  <!-- Noctiluca Theme — prototype features -->
+  <!-- Noctiluca Theme -->
   <section id="noct-section">
     <h2>✦ Noctiluca Theme</h2>
     <div class="noct-actions">
@@ -317,20 +313,67 @@
       <button class="secondary" style="flex:1" onclick="setAllNoct(false)">Disable All</button>
     </div>
     <div class="noct-grid">
-      <label><input type="checkbox" id="n-wave_enhanced"     onchange="noct.wave_enhanced=this.checked">     Enhanced wave</label>
-      <label><input type="checkbox" id="n-wave_tide"         onchange="noct.wave_tide=this.checked">         Tide = glucose</label>
-      <label><input type="checkbox" id="n-stars_constellation" onchange="noct.stars_constellation=this.checked"> Constellations</label>
-      <label><input type="checkbox" id="n-stars_tint"        onchange="noct.stars_tint=this.checked">        Star horizon tint</label>
-      <label><input type="checkbox" id="n-sparkline_wake"    onchange="noct.sparkline_wake=this.checked">    Wake + abyss</label>
-      <label><input type="checkbox" id="n-sparkline_sonar"   onchange="noct.sparkline_sonar=this.checked">   Sonar trail</label>
-      <label><input type="checkbox" id="n-palette_noct"      onchange="noct.palette_noct=this.checked">      Ocean palette</label>
-      <label><input type="checkbox" id="n-arrows_bearing"    onchange="noct.arrows_bearing=this.checked">    Bearing arrows</label>
-      <label><input type="checkbox" id="n-aurora"            onchange="noct.aurora=this.checked">            Aurora</label>
-      <label><input type="checkbox" id="n-alert_sweep"       onchange="noct.alert_sweep=this.checked">       Alert sweep</label>
-      <label><input type="checkbox" id="n-glucose_frame"     onchange="noct.glucose_frame=this.checked">     Instrument frame</label>
-      <label><input type="checkbox" id="n-clock_chrono"      onchange="noct.clock_chrono=this.checked">      Chrono clock</label>
+      <label><input type="checkbox" id="n-wave_enhanced" onchange="noct.wave_enhanced=this.checked"> Abyssal wave depth</label>
+      <label><input type="checkbox" id="n-wave_tide"     onchange="noctTideChanged(this.checked)"> Tide = glucose zone</label>
+      <label><input type="checkbox" id="n-boat_ride"     onchange="noctBoatChanged(this.checked)"> Boat on the waves</label>
+      <label><input type="checkbox" id="n-palette_noct"  onchange="noctPaletteChanged(this.checked)"> Ocean palette</label>
+      <label><input type="checkbox" id="n-stars_tint"    onchange="noct.stars_tint=this.checked"> Star horizon tint</label>
+      <label><input type="checkbox" id="n-aurora"        onchange="noct.aurora=this.checked"> Aurora</label>
     </div>
-    <p class="hint" style="margin-top:10px">Prototype features. Toggle individually to preview. Approved features ship to firmware.</p>
+
+    <!-- Tide aggressiveness — conditional -->
+    <div id="tide-strength-row" style="display:none;margin-bottom:12px">
+      <label style="color:#7bb;margin-bottom:0">
+        Tide aggressiveness
+        <div class="slider-row">
+          <input type="range" name="tide_strength" min="0" max="100" value="75"
+                 oninput="cfg.tide_strength=+this.value;document.getElementById('tide-str-num').value=this.value">
+          <input type="number" id="tide-str-num" style="width:60px;margin-top:0;display:inline"
+                 min="0" max="100" value="75"
+                 oninput="cfg.tide_strength=+this.value;document.querySelector('[name=tide_strength]').value=this.value">
+        </div>
+      </label>
+    </div>
+
+    <!-- Boat colors — conditional -->
+    <div id="boat-colors-row" style="display:none;margin-bottom:12px">
+      <div class="row">
+        <label style="color:#7bb">
+          Hull color
+          <input name="color_boat_hull" type="color" value="#c87828"
+                 oninput="cfg.color_boat_hull=parseInt(this.value.slice(1),16)">
+        </label>
+        <label style="color:#7bb">
+          Sail color
+          <input name="color_boat_sail" type="color" value="#aa8c3c"
+                 oninput="cfg.color_boat_sail=parseInt(this.value.slice(1),16)">
+        </label>
+      </div>
+    </div>
+
+    <div class="noct-sub">
+      <label>
+        Stars
+        <select name="show_stars" onchange="cfg.show_stars=this.value==='true'">
+          <option value="true">On</option>
+          <option value="false">Off</option>
+        </select>
+      </label>
+      <label>
+        Wave base color
+        <input name="color_wave" type="color" value="#0035d2"
+               oninput="cfg.color_wave=parseInt(this.value.slice(1),16)">
+      </label>
+      <label style="margin-bottom:0">
+        Wave speed
+        <select name="wave_speed" onchange="cfg.wave_speed=+this.value">
+          <option value="0" selected>Slow</option>
+          <option value="1">Normal</option>
+          <option value="2">Fast</option>
+        </select>
+      </label>
+    </div>
+    <p class="hint" style="margin-top:10px">Prototype features — toggle individually to preview.</p>
   </section>
 
   <div style="display:flex;gap:8px">
@@ -348,11 +391,14 @@
 const cfg = {
   glucose_low: 70, glucose_high: 180, glucose_warn_low: 80, glucose_warn_high: 160,
   clock_24h: false, pulse_speed: 1, pulse_min: 50,
-  wave_speed: 1, status_bar_style: 0,
+  wave_speed: 0, status_bar_style: 0,
   show_sparkline: true, sparkline_auto: false,
+  sparkline_wake: false, sparkline_sonar: false,
   show_age: true, show_status_label: true,
   show_stars: true,
+  tide_strength: 75,
   color_low: 0xFF2200, color_warn: 0xFFCC00, color_ok: 0x00CC44, color_wave: 0x0035D2,
+  color_boat_hull: 0xC87828, color_boat_sail: 0xAA8C3C,
 };
 
 const state = {
@@ -363,23 +409,41 @@ const state = {
 
 // Noctiluca feature flags — keys match future DashConfig field names
 const noct = {
-  wave_enhanced:      false, // particles + starlight reflection + abyssal depth (bundled)
-  wave_tide:          false, // wave amplitude/baseline encodes glucose state
-  stars_constellation:false, // hand-placed anchor star patterns
-  stars_tint:         false, // horizon glow: lower stars tinted toward wave color
-  sparkline_wake:     false, // wake trail below line + abyss fill (bundled)
-  sparkline_sonar:    false, // phosphor persistence (previous frame ghost)
-  palette_noct:       false, // bioluminescent color palette replaces traffic-light
-  arrows_bearing:     false, // thick navigation-style arrows with bold heads
-  aurora:             false, // faint aurora bands drifting through content area
-  alert_sweep:        false, // bioluminescent flash sweeps L→R on alert
-  glucose_frame:      false, // thin instrument frame around glucose number
-  clock_chrono:       false, // chronometer 3×5 pixel font for clock
+  wave_enhanced: false,
+  wave_tide:     false,
+  stars_tint:    false,
+  palette_noct:  false,
+  aurora:        false,
+  boat_ride:     false,
 };
 
 function setAllNoct(v) {
   Object.keys(noct).forEach(k => noct[k] = v);
   document.querySelectorAll('#noct-section input[type=checkbox]').forEach(cb => cb.checked = v);
+  document.getElementById('tide-strength-row').style.display = v ? '' : 'none';
+  document.getElementById('boat-colors-row').style.display   = v ? '' : 'none';
+}
+
+function noctTideChanged(checked) {
+  noct.wave_tide = checked;
+  document.getElementById('tide-strength-row').style.display = checked ? '' : 'none';
+}
+
+function noctBoatChanged(checked) {
+  noct.boat_ride = checked;
+  document.getElementById('boat-colors-row').style.display = checked ? '' : 'none';
+}
+
+function noctPaletteChanged(checked) {
+  noct.palette_noct = checked;
+  if (checked) {
+    cfg.color_low  = 0xFF3030; cfg.color_warn = 0xFFAA00;
+    cfg.color_ok   = 0x00E5CC; cfg.color_wave = 0x002080;
+    document.querySelector('[name=color_low]').value  = '#ff3030';
+    document.querySelector('[name=color_warn]').value = '#ffaa00';
+    document.querySelector('[name=color_ok]').value   = '#00e5cc';
+    document.querySelector('[name=color_wave]').value = '#002080';
+  }
 }
 
 // ── Canvas setup ──────────────────────────────────────────────────────────────
@@ -408,31 +472,23 @@ function pxHash(x, row, tSlot) {
 function unpack(rgb) { return [(rgb>>>16)&0xFF,(rgb>>>8)&0xFF,rgb&0xFF]; }
 
 function valueColor(mgdl) {
-  if (mgdl <= cfg.glucose_low  || mgdl >= cfg.glucose_high)          return unpack(cfg.color_low);
-  if (mgdl <= cfg.glucose_warn_low || mgdl >= cfg.glucose_warn_high)  return unpack(cfg.color_warn);
+  if (mgdl <= cfg.glucose_low  || mgdl >= cfg.glucose_high)         return unpack(cfg.color_low);
+  if (mgdl <= cfg.glucose_warn_low || mgdl >= cfg.glucose_warn_high) return unpack(cfg.color_warn);
   return unpack(cfg.color_ok);
 }
 
-// Bioluminescent palette — ocean-derived hues replacing traffic-light colors
+// Bioluminescent palette — replaces traffic-light colors when ocean palette enabled
 function vcol(mgdl) {
   if (!noct.palette_noct) return valueColor(mgdl);
-  if (mgdl <= cfg.glucose_low  || mgdl >= cfg.glucose_high)          return [255,  48,  48]; // coral
-  if (mgdl <= cfg.glucose_warn_low || mgdl >= cfg.glucose_warn_high)  return [255, 170,   0]; // amber-gold
-  return [0, 229, 204]; // bioluminescent aqua
+  if (mgdl <= cfg.glucose_low  || mgdl >= cfg.glucose_high)         return [255,  48,  48];
+  if (mgdl <= cfg.glucose_warn_low || mgdl >= cfg.glucose_warn_high) return [255, 170,   0];
+  return [0, 229, 204];
 }
 
 function drawLine(x1,y1,x2,y2,r,g,b) {
   let dx=Math.abs(x2-x1),dy=Math.abs(y2-y1),sx=x1<x2?1:-1,sy=y1<y2?1:-1,err=dx-dy;
   for(;;){setPixel(x1,y1,r,g,b);if(x1===x2&&y1===y2)break;
     const e2=2*err;if(e2>-dy){err-=dy;x1+=sx;}if(e2<dx){err+=dx;y1+=sy;}}
-}
-
-// Draw line with 2px thickness by drawing a parallel offset stroke
-function drawLineThick(x1,y1,x2,y2,r,g,b) {
-  drawLine(x1,y1,x2,y2,r,g,b);
-  const adx=Math.abs(x2-x1), ady=Math.abs(y2-y1);
-  if (ady > adx) drawLine(x1+1,y1,x2+1,y2,r,g,b);
-  else           drawLine(x1,y1+1,x2,y2+1,r,g,b);
 }
 
 // ── Adafruit GFX 5×7 bitmap font ─────────────────────────────────────────────
@@ -492,39 +548,8 @@ function drawText(text, cx, cy, r, g, b, size) {
   }
 }
 
-// 3×5 chronometer font. Column bitmaps: bit0=top row, bit4=bottom row.
-// Characters are variable width (cols.length + 1px gap).
-const CHRONO_FONT = {
-  '0':[31,17,31],  '1':[18,31,16],  '2':[29,21,23],
-  '3':[21,21,31],  '4':[7, 4, 31],  '5':[23,21,29],
-  '6':[31,21,29],  '7':[1, 1, 31],  '8':[31,21,31],
-  '9':[23,21,31],  ':':[10],        ' ':[0,0],
-  'A':[31, 5,31],  'P':[31, 5, 7],  'M':[31,3,3,31],
-};
-
-function drawChrono(text, cx, cy, r, g, b) {
-  let x = cx;
-  for (const ch of text) {
-    const cols = CHRONO_FONT[ch] || CHRONO_FONT[' '];
-    for (let col = 0; col < cols.length; col++) {
-      const bits = cols[col];
-      for (let row = 0; row < 5; row++) {
-        if (bits & (1 << row)) setPixel(x + col, cy + row, r, g, b);
-      }
-    }
-    x += cols.length + 1;
-  }
-}
-
 // ── Stars ─────────────────────────────────────────────────────────────────────
 const STAR_SLOT = 42;
-
-// Hand-placed anchor stars forming two small asterisms
-const CONSTELLATION_ANCHORS = [
-  {x:15,y:5,s:201},{x:21,y:6,s:202},{x:27,y:5,s:203},   // belt
-  {x:90,y:3,s:204},{x:87,y:8,s:205},{x:93,y:8,s:206},{x:90,y:13,s:207}, // cross
-  {x:108,y:4,s:208},                                       // lone bright
-];
 
 function drawSparkles(t) {
   if (!cfg.show_stars) return;
@@ -548,15 +573,6 @@ function drawSparkles(t) {
       }
     }
   }
-  if (noct.stars_constellation) {
-    for (const star of CONSTELLATION_ANCHORS) {
-      const freq  = 0.001 + pxHash(star.x, star.y, star.s) * 0.003;
-      const phase = pxHash(star.x, star.y, star.s+50) * 6.2832;
-      const bright = 0.5 + 0.5 * (Math.sin(t * freq + phase) * 0.5 + 0.5);
-      const v = Math.round(bright * 255);
-      setPixel(star.x, star.y, v, v, v);
-    }
-  }
 }
 
 // ── Aurora ────────────────────────────────────────────────────────────────────
@@ -577,22 +593,6 @@ function drawAurora(t) {
   }
 }
 
-// ── Instrument frame around glucose number ────────────────────────────────────
-function drawGlucoseFrame(mgdl) {
-  if (!noct.glucose_frame) return;
-  const [r,g,b] = vcol(mgdl);
-  const fr=Math.round(r*0.28), fg=Math.round(g*0.28), fb=Math.round(b*0.28);
-  for (let x = 1; x <= 54; x++) {
-    setPixel(x, 2, fr, fg, fb);
-    setPixel(x,19, fr, fg, fb);
-  }
-  // corner ticks
-  setPixel(1, 3,fr,fg,fb); setPixel(1, 4,fr,fg,fb);
-  setPixel(1,17,fr,fg,fb); setPixel(1,18,fr,fg,fb);
-  setPixel(54, 3,fr,fg,fb); setPixel(54, 4,fr,fg,fb);
-  setPixel(54,17,fr,fg,fb); setPixel(54,18,fr,fg,fb);
-}
-
 // ── Wave strip ────────────────────────────────────────────────────────────────
 function drawStatusBar(sr, sg, sb, t) {
   const WAVE_Y = 22, WAVE_H = 10;
@@ -603,24 +603,36 @@ function drawStatusBar(sr, sg, sb, t) {
         setPixel(x, WAVE_Y + row, sr, sg, sb);
     return;
   }
-  const t4    = Math.floor(t / 64);
-  const speed = cfg.wave_speed === 0 ? 0.5 : cfg.wave_speed === 2 ? 2.0 : 1.0;
-  const wr=(cfg.color_wave>>>16)&0xFF, wg=(cfg.color_wave>>>8)&0xFF, wb=cfg.color_wave&0xFF;
 
-  // Tide: amplitude and baseline shift with glucose zone
+  const m = state.value_mgdl;
+  const isAlert = m <= cfg.glucose_low  || m >= cfg.glucose_high;
+  const isWarn  = m <= cfg.glucose_warn_low || m >= cfg.glucose_warn_high;
+
+  // Base speed multiplier, optionally boosted by tide
+  let speedMult = cfg.wave_speed === 0 ? 0.5 : cfg.wave_speed === 2 ? 2.0 : 1.0;
+
+  // Tide: amplitude and baseline shift with glucose zone, scaled by aggressiveness
   let amplitude = 1.5, baseline = 2.5;
   if (noct.wave_tide) {
-    const m = state.value_mgdl;
-    const isAlert = m <= cfg.glucose_low || m >= cfg.glucose_high;
-    const isWarn  = m <= cfg.glucose_warn_low || m >= cfg.glucose_warn_high;
-    if (isAlert)     { amplitude = 3.8; baseline = 3.2; }
-    else if (isWarn) { amplitude = 2.5; baseline = 2.8; }
+    const s = cfg.tide_strength / 100;
+    if (isAlert) {
+      amplitude = 1.5 + (3.8 - 1.5) * s;
+      baseline  = 2.5 + (3.2 - 2.5) * s;
+      speedMult *= 1 + 0.8 * s;
+    } else if (isWarn) {
+      amplitude = 1.5 + (2.5 - 1.5) * s;
+      baseline  = 2.5 + (2.8 - 2.5) * s;
+      speedMult *= 1 + 0.3 * s;
+    }
   }
 
-  // Pre-compute wave surface per column (needed by reflection + particles)
+  const t4 = Math.floor(t / 64);
+  const wr=(cfg.color_wave>>>16)&0xFF, wg=(cfg.color_wave>>>8)&0xFF, wb=cfg.color_wave&0xFF;
+
+  // Pre-compute wave surface per column
   const surfaces = new Float32Array(W);
   for (let x = 0; x < W; x++) {
-    const ft = t * 0.001 * speed;
+    const ft = t * 0.001 * speedMult;
     const wave = (Math.sin(x*0.130 - ft*3.00)
                 + Math.sin(x*0.071 + ft*2.10) * 0.55
                 + Math.sin(x*0.211 - ft*3.30) * 0.35
@@ -642,7 +654,7 @@ function drawStatusBar(sr, sg, sb, t) {
       let g = Math.round(wg * bright);
       let b = Math.min(255, Math.round(wb * bright + 18.0 * (1.0 - bright)));
 
-      // Abyssal depth: shift hue toward midnight indigo at bottom rows
+      // Abyssal depth: hue shift toward midnight indigo at bottom rows
       if (noct.wave_enhanced) {
         const depth = row / (WAVE_H - 1);
         r = Math.round(r * (1 - depth * 0.75) + 15 * depth);
@@ -653,50 +665,39 @@ function drawStatusBar(sr, sg, sb, t) {
     }
   }
 
-  if (noct.wave_enhanced) {
-    // Starlight reflections at wave surface
-    const reflPhase = t * 0.0007;
-    for (let x = 0; x < W; x++) {
-      if (pxHash(x, 77, STAR_SLOT) < 0.022) {
-        const v = Math.round((0.10 + 0.08 * pxHash(x, 78, STAR_SLOT)) * 230);
-        const wobble = Math.round(Math.sin(reflPhase + x * 0.5));
-        const reflRow = Math.min(WAVE_H-1, Math.max(0, Math.floor(surfaces[x]) + 1));
-        setPixel(Math.min(W-1, Math.max(0, x + wobble)), WAVE_Y + reflRow, v, v, Math.min(255,Math.round(v*1.15)));
-      }
-    }
-
-    // Plankton particles rising from wave crest
-    const slot  = Math.floor(t / 900);
-    const phase = (t % 900) / 900;
-    for (let x = 0; x < W; x++) {
-      if (pxHash(x, 99, slot) > 0.94) {
-        const drift = Math.floor(phase * 3);
-        const alpha = Math.max(0, 1 - phase * 1.5);
-        const v = Math.round(alpha * 200);
-        if (v > 0) {
-          const crestRow = WAVE_Y + Math.max(0, Math.floor(surfaces[x]) - 1);
-          const py = crestRow - drift;
-          if (py >= 0) setPixel(x, py, v, Math.round(v*0.92), v);
-        }
-      }
-    }
+  // Boat riding the waves
+  if (noct.boat_ride) {
+    const bx = 62;
+    const by = WAVE_Y + Math.floor(surfaces[bx]);
+    const [hr,hg,hb] = unpack(cfg.color_boat_hull);
+    const [saR,saG,saB] = unpack(cfg.color_boat_sail);
+    // Hull (7px)
+    for (let dx = -3; dx <= 3; dx++) setPixel(bx+dx, by,   hr, hg, hb);
+    // Deck (5px)
+    for (let dx = -2; dx <= 2; dx++) setPixel(bx+dx, by-1, hr, hg, hb);
+    // Sail mid (3px, left of mast center)
+    for (let dx = -2; dx <= 0; dx++) setPixel(bx+dx, by-2, saR, saG, saB);
+    // Sail top (2px)
+    setPixel(bx-2, by-3, saR, saG, saB);
+    setPixel(bx-1, by-3, saR, saG, saB);
+    // Masthead (1px at mast, dimmed hull color)
+    setPixel(bx, by-4, Math.round(hr*0.4), Math.round(hg*0.4), Math.round(hb*0.4));
   }
 }
 
-// ── Trend arrows ──────────────────────────────────────────────────────────────
+// ── Trend arrows (CX moved left to 42) ───────────────────────────────────────
 function drawTrendArrow(code, r, g, b) {
-  if (noct.arrows_bearing) { drawTrendArrowBearing(code, r, g, b); return; }
-  const CX = 59, CY = 11;
+  const CX = 42, CY = 11;
   if (code === 1) {
     drawLine(CX-2,CY+4,CX-2,CY-4,r,g,b); drawLine(CX-2,CY-4,CX-4,CY-2,r,g,b);
-    drawLine(CX-2,CY-4,CX,CY-2,r,g,b);
-    drawLine(CX+2,CY+4,CX+2,CY-4,r,g,b); drawLine(CX+2,CY-4,CX,CY-2,r,g,b);
+    drawLine(CX-2,CY-4,CX,  CY-2,r,g,b);
+    drawLine(CX+2,CY+4,CX+2,CY-4,r,g,b); drawLine(CX+2,CY-4,CX,  CY-2,r,g,b);
     drawLine(CX+2,CY-4,CX+4,CY-2,r,g,b); return;
   }
   if (code === 7) {
     drawLine(CX-2,CY-4,CX-2,CY+4,r,g,b); drawLine(CX-2,CY+4,CX-4,CY+2,r,g,b);
-    drawLine(CX-2,CY+4,CX,CY+2,r,g,b);
-    drawLine(CX+2,CY-4,CX+2,CY+4,r,g,b); drawLine(CX+2,CY+4,CX,CY+2,r,g,b);
+    drawLine(CX-2,CY+4,CX,  CY+2,r,g,b);
+    drawLine(CX+2,CY-4,CX+2,CY+4,r,g,b); drawLine(CX+2,CY+4,CX,  CY+2,r,g,b);
     drawLine(CX+2,CY+4,CX+4,CY+2,r,g,b); return;
   }
   let x1,y1,x2,y2,hx1,hy1,hx2,hy2;
@@ -710,36 +711,6 @@ function drawTrendArrow(code, r, g, b) {
   drawLine(x1,y1,x2,y2,r,g,b);
   drawLine(x2,y2,hx1,hy1,r,g,b);
   drawLine(x2,y2,hx2,hy2,r,g,b);
-}
-
-function drawTrendArrowBearing(code, r, g, b) {
-  const CX=59, CY=11;
-  function L(x1,y1,x2,y2) { drawLineThick(x1,y1,x2,y2,r,g,b); }
-  // Filled diamond tip (Manhattan distance ≤ 2)
-  function tip(px,py) {
-    for(let dy=-2;dy<=2;dy++)
-      for(let dx=-2;dx<=2;dx++)
-        if(Math.abs(dx)+Math.abs(dy)<=2) setPixel(px+dx,py+dy,r,g,b);
-  }
-  if (code===1) {
-    L(CX-3,CY+5,CX-3,CY-2); tip(CX-3,CY-4);
-    L(CX+2,CY+5,CX+2,CY-2); tip(CX+2,CY-4);
-    return;
-  }
-  if (code===7) {
-    L(CX-3,CY-5,CX-3,CY+2); tip(CX-3,CY+4);
-    L(CX+2,CY-5,CX+2,CY+2); tip(CX+2,CY+4);
-    return;
-  }
-  let x1,y1,x2,y2;
-  switch(code){
-    case 2: [x1,y1,x2,y2]=[CX,CY+5,CX,CY-3];     break;
-    case 6: [x1,y1,x2,y2]=[CX,CY-5,CX,CY+3];     break;
-    case 3: [x1,y1,x2,y2]=[CX-4,CY+4,CX+3,CY-3]; break;
-    case 5: [x1,y1,x2,y2]=[CX-4,CY-4,CX+3,CY+3]; break;
-    default:[x1,y1,x2,y2]=[CX-5,CY,CX+3,CY];
-  }
-  L(x1,y1,x2,y2); tip(x2,y2);
 }
 
 // ── Sparkline ─────────────────────────────────────────────────────────────────
@@ -767,13 +738,13 @@ function drawSparkline(spark) {
   }
 
   // Sonar: ghost previous frame at 25% brightness
-  if (noct.sparkline_sonar && sonarPrev.length > 0) {
+  if (cfg.sparkline_sonar && sonarPrev.length > 0) {
     for (const p of sonarPrev)
       setPixel(p.x, p.y, Math.round(p.r*0.25), Math.round(p.g*0.25), Math.round(p.b*0.25));
   }
 
-  // Abyss fill: dim gradient from line color (top) → wave color (bottom)
-  if (noct.sparkline_wake && count > 0) {
+  // Abyss fill: dim gradient from line color → wave color below each point
+  if (cfg.sparkline_wake && count > 0) {
     const [fw,gw,bw] = unpack(cfg.color_wave);
     for (let i = 0; i < count; i++) {
       const x  = pxFor(i);
@@ -792,13 +763,13 @@ function drawSparkline(spark) {
     }
   }
 
-  // Draw lines with optional wake trail
+  // Draw lines with optional wake trail (y+1 shadow)
   const newPrev = [];
   for (let i = 1; i < count; i++) {
     const x1=pxFor(i-1), y1=yFor(spark[startI+i-1]);
     const x2=pxFor(i),   y2=yFor(spark[startI+i]);
     const [r,g,b] = vcol(spark[startI+i]);
-    if (noct.sparkline_wake)
+    if (cfg.sparkline_wake)
       drawLine(x1,y1+1,x2,y2+1,Math.round(r*0.25),Math.round(g*0.25),Math.round(b*0.25));
     drawLine(x1,y1,x2,y2,r,g,b);
     newPrev.push({x:x1,y:y1,r,g,b});
@@ -809,7 +780,7 @@ function drawSparkline(spark) {
     setPixel(x,y,r,g,b);
     newPrev.push({x,y,r,g,b});
   }
-  sonarPrev = noct.sparkline_sonar ? newPrev : [];
+  sonarPrev = cfg.sparkline_sonar ? newPrev : [];
 }
 
 // ── Render loop ───────────────────────────────────────────────────────────────
@@ -835,14 +806,13 @@ function render(now) {
   const alert      = mgdl <= cfg.glucose_low || mgdl >= cfg.glucose_high;
   const alertColor = noct.palette_noct ? [255,48,48] : unpack(cfg.color_low);
 
-  // Aurora drawn first — everything else renders on top
+  // Aurora first — everything else renders on top
   drawAurora(t);
 
   // Stars
   drawSparkles(t);
 
   if (!state.error) {
-    drawGlucoseFrame(mgdl);
     drawSparkline(state.sparkline);
     drawTrendArrow(state.trend_code, cr, cg, cb);
     drawStatusBar(cr, cg, cb, t);
@@ -853,8 +823,9 @@ function render(now) {
   if (!state.error) {
     let [gr,gg,gb] = [cr,cg,cb];
     if (alert) {
-      const freq = cfg.pulse_speed===0 ? 0.003142 : cfg.pulse_speed===2 ? 0.012566 : 0.006283;
-      const minF = cfg.pulse_min/100.0;
+      const pulseHz = [0.25, 0.5, 1.0][cfg.pulse_speed] ?? 0.5;
+      const freq = pulseHz * 2 * Math.PI * 0.001;
+      const minF = cfg.pulse_min / 100.0;
       const pulse = (1+minF)*0.5 + (1-minF)*0.5*Math.sin(t*freq);
       gr=Math.min(255,Math.round(cr*pulse));
       gg=Math.min(255,Math.round(cg*pulse));
@@ -882,29 +853,7 @@ function render(now) {
         const h = d.getHours()%12||12;
         ts = `${h}:${String(d.getMinutes()).padStart(2,'0')} ${d.getHours()<12?'AM':'PM'}`;
       }
-      if (noct.clock_chrono) {
-        drawChrono(ts, 2, 25, 80, 200, 215);
-      } else {
-        drawText(ts, 2, 24, 220,220,220, 1);
-      }
-    }
-
-    // Alert sweep: bioluminescent flash races L→R each pulse cycle
-    if (noct.alert_sweep && alert) {
-      const period = cfg.pulse_speed===0 ? 2000 : cfg.pulse_speed===2 ? 500 : 1000;
-      const phase  = (t % period) / period;
-      if (phase < 0.38) {
-        const sweepX  = Math.round(phase / 0.38 * (W + 6));
-        const fadeAmt = 1 - phase / 0.38;
-        for (let y = 0; y < H; y++) {
-          const sv = Math.round(fadeAmt * 170);
-          if (sweepX   < W) setPixel(sweepX,   y, 0, sv, Math.round(sv*0.82));
-          const sv2 = Math.round(fadeAmt * 55);
-          if (sweepX-1 >= 0 && sweepX-1 < W) setPixel(sweepX-1, y, 0, sv2, Math.round(sv2*0.82));
-          const sv3 = Math.round(fadeAmt * 18);
-          if (sweepX-2 >= 0 && sweepX-2 < W) setPixel(sweepX-2, y, 0, sv3, Math.round(sv3*0.82));
-        }
-      }
+      drawText(ts, 2, 24, 220,220,220, 1);
     }
   } else {
     drawText('ERROR', 2, 24, 255,80,60, 1);
@@ -938,10 +887,6 @@ function toggleState(key) {
   document.getElementById({stale:'t-stale',error:'t-error',flipped:'t-flip'}[key])
           .classList.toggle('on',state[key]);
 }
-function applyBarVis() {
-  document.getElementById('wave-speed-row').style.display =
-    cfg.status_bar_style===0 ? '' : 'none';
-}
 function setPreset(mgdl,trend) {
   state.value_mgdl=mgdl; state.trend_code=trend; state.stale=false; state.error=false;
   document.getElementById('glucose-range').value=mgdl;
@@ -960,10 +905,15 @@ function copyConfig() {
     pulse_speed:cfg.pulse_speed, pulse_min:cfg.pulse_min,
     wave_speed:cfg.wave_speed, status_bar_style:cfg.status_bar_style,
     show_sparkline:cfg.show_sparkline, sparkline_auto:cfg.sparkline_auto,
+    sparkline_wake:cfg.sparkline_wake, sparkline_sonar:cfg.sparkline_sonar,
     show_age:cfg.show_age, show_status_label:cfg.show_status_label,
-    show_stars:cfg.show_stars,
+    show_stars:cfg.show_stars, tide_strength:cfg.tide_strength,
     color_low:hex(cfg.color_low), color_warn:hex(cfg.color_warn),
     color_ok:hex(cfg.color_ok),   color_wave:hex(cfg.color_wave),
+    color_boat_hull:hex(cfg.color_boat_hull), color_boat_sail:hex(cfg.color_boat_sail),
+    wave_enhanced:noct.wave_enhanced, wave_tide:noct.wave_tide,
+    stars_tint:noct.stars_tint, palette_noct:noct.palette_noct,
+    aurora:noct.aurora, boat_ride:noct.boat_ride,
   };
   navigator.clipboard.writeText(JSON.stringify(out,null,2)).catch(()=>{
     prompt('Copy this config JSON:',JSON.stringify(out,null,2));
@@ -983,26 +933,34 @@ function importConfig(input) {
     try { d = JSON.parse(e.target.result); } catch { alert('Invalid JSON file.'); return; }
     const hex2int = s => s ? parseInt(s.replace('#',''), 16) : undefined;
     const apply = (key, val) => { if (val !== undefined && key in cfg) cfg[key] = val; };
-    apply('glucose_low',d.glucose_low); apply('glucose_high',d.glucose_high);
-    apply('glucose_warn_low',d.glucose_warn_low); apply('glucose_warn_high',d.glucose_warn_high);
-    apply('clock_24h',d.clock_24h); apply('pulse_speed',d.pulse_speed);
-    apply('pulse_min',d.pulse_min); apply('wave_speed',d.wave_speed);
-    apply('status_bar_style',d.status_bar_style); apply('show_sparkline',d.show_sparkline);
-    apply('sparkline_auto',d.sparkline_auto); apply('show_age',d.show_age);
-    apply('show_status_label',d.show_status_label); apply('show_stars',d.show_stars);
-    if (d.color_low)  cfg.color_low  = hex2int(d.color_low);
-    if (d.color_warn) cfg.color_warn = hex2int(d.color_warn);
-    if (d.color_ok)   cfg.color_ok   = hex2int(d.color_ok);
-    if (d.color_wave) cfg.color_wave = hex2int(d.color_wave);
+    // Apply all cfg keys
+    Object.keys(cfg).forEach(k => {
+      if (k.startsWith('color_')) {
+        if (d[k] !== undefined) cfg[k] = hex2int(d[k]) ?? cfg[k];
+      } else if (d[k] !== undefined) {
+        cfg[k] = typeof cfg[k] === 'boolean' ? !!d[k] : +d[k] === +d[k] ? +d[k] : d[k];
+      }
+    });
+    // Apply noct flags
+    ['wave_enhanced','wave_tide','stars_tint','palette_noct','aurora','boat_ride'].forEach(k => {
+      if (d[k] !== undefined) noct[k] = !!d[k];
+      const el = document.getElementById('n-'+k);
+      if (el) el.checked = noct[k];
+    });
+    // Sync all named inputs
     document.querySelectorAll('[name]').forEach(el => {
       const k = el.name;
       if (!(k in cfg)) return;
       const v = cfg[k];
-      if (el.type === 'color') el.value = '#'+(v&0xFFFFFF).toString(16).padStart(6,'0');
-      else if (el.tagName === 'SELECT') el.value = String(v);
+      if (el.type === 'checkbox')    el.checked = !!v;
+      else if (el.type === 'color')  el.value = '#'+(v&0xFFFFFF).toString(16).padStart(6,'0');
+      else if (el.tagName==='SELECT') el.value = String(v);
       else el.value = v;
     });
-    applyBarVis();
+    // Update conditional visibility
+    document.getElementById('tide-strength-row').style.display = noct.wave_tide ? '' : 'none';
+    document.getElementById('boat-colors-row').style.display   = noct.boat_ride ? '' : 'none';
+    document.getElementById('tide-str-num').value = cfg.tide_strength;
     const toast = document.getElementById('copy-toast');
     toast.textContent = 'Config imported!';
     setTimeout(() => toast.textContent = '', 2000);

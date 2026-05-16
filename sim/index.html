@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Diabetic Dash Simulator</title>
   <style>
-    /* Base — identical to data/style.css */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -53,7 +52,6 @@
     }
     button.secondary:hover { background: #1a4a7a; }
     .hint { font-size: 12px; color: #555; margin-top: 10px; line-height: 1.5; }
-    /* Simulator layout */
     #display-col { flex-shrink: 0; }
     #display-frame {
       background: #000; border: 3px solid #2a2a2a;
@@ -67,7 +65,6 @@
       scrollbar-width: thin; scrollbar-color: #333 #111;
     }
     header { margin-bottom: 16px; }
-    /* State toggles */
     .toggles { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 5px; }
     .toggle {
       padding: 7px 13px; background: #2a2a2a; border: 1px solid #383838;
@@ -75,7 +72,6 @@
       font-family: inherit; transition: all .1s; width: auto; margin-bottom: 0;
     }
     .toggle.on { background: #0d2a1a; border-color: #2a7; color: #3db; }
-    /* Trend grid */
     .trend-grid {
       display: grid; grid-template-columns: repeat(4,1fr);
       gap: 6px; margin-top: 5px;
@@ -86,11 +82,9 @@
       font-family: inherit; text-align: center; width: auto; margin-bottom: 0;
     }
     .trend-btn.active { background: #0d2a1a; border-color: #2a7; color: #3db; }
-    /* Glucose row */
     .slider-row { display: flex; align-items: center; gap: 10px; margin-top: 5px; }
     .slider-row input[type=range] { flex: 1; accent-color: #2563eb; }
     .slider-row input[type=number] { width: 80px; display: inline; margin-top: 0; }
-    /* Presets */
     .presets { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 5px; }
     .preset-btn {
       padding: 7px 13px; background: #2a2a2a; border: 1px solid #383838;
@@ -98,9 +92,25 @@
       width: auto; margin-bottom: 0; font-weight: 400; color: #eee;
     }
     .preset-btn:hover { background: #333; }
-    /* Color rows */
     input[type=color] { padding: 2px 4px; height: 36px; cursor: pointer; }
     #copy-toast { color: #3db; font-size: 11px; text-align: center; height: 16px; margin-top: 4px; }
+    /* Noctiluca section */
+    #noct-section { border-color: #1a3a4a; background: #0f1c22; }
+    #noct-section h2 { color: #2a9aaa; letter-spacing: 1px; }
+    .noct-actions { display: flex; gap: 6px; margin-bottom: 10px; }
+    .noct-actions button { margin-bottom: 0; padding: 7px; font-size: 12px; }
+    .noct-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 5px 14px;
+    }
+    .noct-grid label {
+      display: flex; align-items: center; gap: 7px;
+      font-size: 12px; color: #7bb; margin-bottom: 0; cursor: pointer;
+    }
+    .noct-grid input[type=checkbox] {
+      width: auto; margin: 0; padding: 0; height: auto;
+      accent-color: #2a9aaa; cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -118,7 +128,6 @@
     <p class="subtitle">Simulator — v20260512-5afcb13</p>
   </header>
 
-  <!-- Simulator state (not on real device) -->
   <section>
     <h2>Simulator</h2>
     <label>
@@ -154,7 +163,6 @@
     </label>
   </section>
 
-  <!-- Display — mirrors device UI exactly -->
   <section>
     <h2>Display</h2>
     <label>
@@ -190,7 +198,6 @@
     </div>
   </section>
 
-  <!-- Style — mirrors device UI exactly -->
   <section>
     <h2>Style</h2>
     <label>
@@ -274,7 +281,6 @@
     </label>
   </section>
 
-  <!-- Colors — mirrors device UI exactly -->
   <section>
     <h2>Colors</h2>
     <div class="row">
@@ -303,6 +309,30 @@
     </div>
   </section>
 
+  <!-- Noctiluca Theme — prototype features -->
+  <section id="noct-section">
+    <h2>✦ Noctiluca Theme</h2>
+    <div class="noct-actions">
+      <button class="secondary" style="flex:1" onclick="setAllNoct(true)">Enable All</button>
+      <button class="secondary" style="flex:1" onclick="setAllNoct(false)">Disable All</button>
+    </div>
+    <div class="noct-grid">
+      <label><input type="checkbox" id="n-wave_enhanced"     onchange="noct.wave_enhanced=this.checked">     Enhanced wave</label>
+      <label><input type="checkbox" id="n-wave_tide"         onchange="noct.wave_tide=this.checked">         Tide = glucose</label>
+      <label><input type="checkbox" id="n-stars_constellation" onchange="noct.stars_constellation=this.checked"> Constellations</label>
+      <label><input type="checkbox" id="n-stars_tint"        onchange="noct.stars_tint=this.checked">        Star horizon tint</label>
+      <label><input type="checkbox" id="n-sparkline_wake"    onchange="noct.sparkline_wake=this.checked">    Wake + abyss</label>
+      <label><input type="checkbox" id="n-sparkline_sonar"   onchange="noct.sparkline_sonar=this.checked">   Sonar trail</label>
+      <label><input type="checkbox" id="n-palette_noct"      onchange="noct.palette_noct=this.checked">      Ocean palette</label>
+      <label><input type="checkbox" id="n-arrows_bearing"    onchange="noct.arrows_bearing=this.checked">    Bearing arrows</label>
+      <label><input type="checkbox" id="n-aurora"            onchange="noct.aurora=this.checked">            Aurora</label>
+      <label><input type="checkbox" id="n-alert_sweep"       onchange="noct.alert_sweep=this.checked">       Alert sweep</label>
+      <label><input type="checkbox" id="n-glucose_frame"     onchange="noct.glucose_frame=this.checked">     Instrument frame</label>
+      <label><input type="checkbox" id="n-clock_chrono"      onchange="noct.clock_chrono=this.checked">      Chrono clock</label>
+    </div>
+    <p class="hint" style="margin-top:10px">Prototype features. Toggle individually to preview. Approved features ship to firmware.</p>
+  </section>
+
   <div style="display:flex;gap:8px">
     <button class="secondary" style="flex:1" onclick="copyConfig()">Copy Config JSON</button>
     <label style="flex:1;margin:0">
@@ -311,7 +341,7 @@
     </label>
   </div>
   <div id="copy-toast"></div>
-</div><!-- #controls -->
+</div>
 
 <script>
 // ── Config (mirrors DashConfig defaults) ─────────────────────────────────────
@@ -331,6 +361,27 @@ const state = {
   sparkline: [88,92,96,101,106,109,112,115,113,111,112,110,112],
 };
 
+// Noctiluca feature flags — keys match future DashConfig field names
+const noct = {
+  wave_enhanced:      false, // particles + starlight reflection + abyssal depth (bundled)
+  wave_tide:          false, // wave amplitude/baseline encodes glucose state
+  stars_constellation:false, // hand-placed anchor star patterns
+  stars_tint:         false, // horizon glow: lower stars tinted toward wave color
+  sparkline_wake:     false, // wake trail below line + abyss fill (bundled)
+  sparkline_sonar:    false, // phosphor persistence (previous frame ghost)
+  palette_noct:       false, // bioluminescent color palette replaces traffic-light
+  arrows_bearing:     false, // thick navigation-style arrows with bold heads
+  aurora:             false, // faint aurora bands drifting through content area
+  alert_sweep:        false, // bioluminescent flash sweeps L→R on alert
+  glucose_frame:      false, // thin instrument frame around glucose number
+  clock_chrono:       false, // chronometer 3×5 pixel font for clock
+};
+
+function setAllNoct(v) {
+  Object.keys(noct).forEach(k => noct[k] = v);
+  document.querySelectorAll('#noct-section input[type=checkbox]').forEach(cb => cb.checked = v);
+}
+
 // ── Canvas setup ──────────────────────────────────────────────────────────────
 const W = 128, H = 32;
 const visible = document.getElementById('c');
@@ -348,7 +399,6 @@ function setPixel(x, y, r, g, b) {
   px[i] = r; px[i+1] = g; px[i+2] = b; px[i+3] = 255;
 }
 
-// ── Pixel hash (exact port of C++ integer hash) ───────────────────────────────
 function pxHash(x, row, tSlot) {
   let n = (Math.imul(x,1619) + Math.imul(row,31337) + Math.imul(tSlot,3571)) >>> 0;
   n ^= (n << 13); n = n >>> 0; n ^= (n >>> 17); n ^= (n << 5); n = n >>> 0;
@@ -363,113 +413,64 @@ function valueColor(mgdl) {
   return unpack(cfg.color_ok);
 }
 
+// Bioluminescent palette — ocean-derived hues replacing traffic-light colors
+function vcol(mgdl) {
+  if (!noct.palette_noct) return valueColor(mgdl);
+  if (mgdl <= cfg.glucose_low  || mgdl >= cfg.glucose_high)          return [255,  48,  48]; // coral
+  if (mgdl <= cfg.glucose_warn_low || mgdl >= cfg.glucose_warn_high)  return [255, 170,   0]; // amber-gold
+  return [0, 229, 204]; // bioluminescent aqua
+}
+
 function drawLine(x1,y1,x2,y2,r,g,b) {
   let dx=Math.abs(x2-x1),dy=Math.abs(y2-y1),sx=x1<x2?1:-1,sy=y1<y2?1:-1,err=dx-dy;
   for(;;){setPixel(x1,y1,r,g,b);if(x1===x2&&y1===y2)break;
     const e2=2*err;if(e2>-dy){err-=dy;x1+=sx;}if(e2<dx){err+=dx;y1+=sy;}}
 }
 
-// ── Adafruit GFX 5×7 bitmap font (column-major, bit0=top row) ────────────────
-// Full ASCII 0x20–0x7E. Each character is 5 bytes (one per column).
+// Draw line with 2px thickness by drawing a parallel offset stroke
+function drawLineThick(x1,y1,x2,y2,r,g,b) {
+  drawLine(x1,y1,x2,y2,r,g,b);
+  const adx=Math.abs(x2-x1), ady=Math.abs(y2-y1);
+  if (ady > adx) drawLine(x1+1,y1,x2+1,y2,r,g,b);
+  else           drawLine(x1,y1+1,x2,y2+1,r,g,b);
+}
+
+// ── Adafruit GFX 5×7 bitmap font ─────────────────────────────────────────────
 const FONT = [
-  0x00,0x00,0x00,0x00,0x00, // 0x20 ' '
-  0x00,0x00,0x5F,0x00,0x00, // 0x21 '!'
-  0x00,0x07,0x00,0x07,0x00, // 0x22 '"'
-  0x14,0x7F,0x14,0x7F,0x14, // 0x23 '#'
-  0x24,0x2A,0x7F,0x2A,0x12, // 0x24 '$'
-  0x23,0x13,0x08,0x64,0x62, // 0x25 '%'
-  0x36,0x49,0x55,0x22,0x50, // 0x26 '&'
-  0x00,0x05,0x03,0x00,0x00, // 0x27 '\''
-  0x00,0x1C,0x22,0x41,0x00, // 0x28 '('
-  0x00,0x41,0x22,0x1C,0x00, // 0x29 ')'
-  0x14,0x08,0x3E,0x08,0x14, // 0x2A '*'
-  0x08,0x08,0x3E,0x08,0x08, // 0x2B '+'
-  0x00,0x50,0x30,0x00,0x00, // 0x2C ','
-  0x08,0x08,0x08,0x08,0x08, // 0x2D '-'
-  0x00,0x60,0x60,0x00,0x00, // 0x2E '.'
-  0x20,0x10,0x08,0x04,0x02, // 0x2F '/'
-  0x3E,0x51,0x49,0x45,0x3E, // 0x30 '0'
-  0x00,0x42,0x7F,0x40,0x00, // 0x31 '1'
-  0x42,0x61,0x51,0x49,0x46, // 0x32 '2'
-  0x21,0x41,0x45,0x4B,0x31, // 0x33 '3'
-  0x18,0x14,0x12,0x7F,0x10, // 0x34 '4'
-  0x27,0x45,0x45,0x45,0x39, // 0x35 '5'
-  0x3C,0x4A,0x49,0x49,0x30, // 0x36 '6'
-  0x01,0x71,0x09,0x05,0x03, // 0x37 '7'
-  0x36,0x49,0x49,0x49,0x36, // 0x38 '8'
-  0x06,0x49,0x49,0x29,0x1E, // 0x39 '9'
-  0x00,0x36,0x36,0x00,0x00, // 0x3A ':'
-  0x00,0x56,0x36,0x00,0x00, // 0x3B ';'
-  0x08,0x14,0x22,0x41,0x00, // 0x3C '<'
-  0x14,0x14,0x14,0x14,0x14, // 0x3D '='
-  0x00,0x41,0x22,0x14,0x08, // 0x3E '>'
-  0x02,0x01,0x51,0x09,0x06, // 0x3F '?'
-  0x32,0x49,0x79,0x41,0x3E, // 0x40 '@'
-  0x7E,0x11,0x11,0x11,0x7E, // 0x41 'A'
-  0x7F,0x49,0x49,0x49,0x36, // 0x42 'B'
-  0x3E,0x41,0x41,0x41,0x22, // 0x43 'C'
-  0x7F,0x41,0x41,0x22,0x1C, // 0x44 'D'
-  0x7F,0x49,0x49,0x49,0x41, // 0x45 'E'
-  0x7F,0x09,0x09,0x09,0x01, // 0x46 'F'
-  0x3E,0x41,0x49,0x49,0x7A, // 0x47 'G'
-  0x7F,0x08,0x08,0x08,0x7F, // 0x48 'H'
-  0x00,0x41,0x7F,0x41,0x00, // 0x49 'I'
-  0x20,0x40,0x41,0x3F,0x01, // 0x4A 'J'
-  0x7F,0x08,0x14,0x22,0x41, // 0x4B 'K'
-  0x7F,0x40,0x40,0x40,0x40, // 0x4C 'L'
-  0x7F,0x02,0x0C,0x02,0x7F, // 0x4D 'M'
-  0x7F,0x04,0x08,0x10,0x7F, // 0x4E 'N'
-  0x3E,0x41,0x41,0x41,0x3E, // 0x4F 'O'
-  0x7F,0x09,0x09,0x09,0x06, // 0x50 'P'
-  0x3E,0x41,0x51,0x21,0x5E, // 0x51 'Q'
-  0x7F,0x09,0x19,0x29,0x46, // 0x52 'R'
-  0x46,0x49,0x49,0x49,0x31, // 0x53 'S'
-  0x01,0x01,0x7F,0x01,0x01, // 0x54 'T'
-  0x3F,0x40,0x40,0x40,0x3F, // 0x55 'U'
-  0x1F,0x20,0x40,0x20,0x1F, // 0x56 'V'
-  0x3F,0x40,0x38,0x40,0x3F, // 0x57 'W'
-  0x63,0x14,0x08,0x14,0x63, // 0x58 'X'
-  0x07,0x08,0x70,0x08,0x07, // 0x59 'Y'
-  0x61,0x51,0x49,0x45,0x43, // 0x5A 'Z'
-  0x00,0x41,0x7F,0x40,0x00, // 0x5B '['
-  0x02,0x04,0x08,0x10,0x20, // 0x5C '\'
-  0x00,0x40,0x7F,0x41,0x00, // 0x5D ']'
-  0x04,0x02,0x01,0x02,0x04, // 0x5E '^'
-  0x40,0x40,0x40,0x40,0x40, // 0x5F '_'
-  0x00,0x01,0x02,0x04,0x00, // 0x60 '`'
-  0x20,0x54,0x54,0x54,0x78, // 0x61 'a'
-  0x7F,0x48,0x44,0x44,0x38, // 0x62 'b'
-  0x38,0x44,0x44,0x44,0x20, // 0x63 'c'
-  0x38,0x44,0x44,0x48,0x7F, // 0x64 'd'
-  0x38,0x54,0x54,0x54,0x18, // 0x65 'e'
-  0x08,0x7E,0x09,0x01,0x02, // 0x66 'f'
-  0x0C,0x52,0x52,0x52,0x3E, // 0x67 'g'
-  0x7F,0x08,0x04,0x04,0x78, // 0x68 'h'
-  0x00,0x44,0x7D,0x40,0x00, // 0x69 'i'
-  0x20,0x40,0x44,0x3D,0x00, // 0x6A 'j'
-  0x7F,0x10,0x28,0x44,0x00, // 0x6B 'k'
-  0x00,0x41,0x7F,0x40,0x00, // 0x6C 'l'
-  0x7C,0x04,0x18,0x04,0x78, // 0x6D 'm'
-  0x7C,0x08,0x04,0x04,0x78, // 0x6E 'n'
-  0x38,0x44,0x44,0x44,0x38, // 0x6F 'o'
-  0x7C,0x14,0x14,0x14,0x08, // 0x70 'p'
-  0x08,0x14,0x14,0x18,0x7C, // 0x71 'q'
-  0x7C,0x08,0x04,0x04,0x08, // 0x72 'r'
-  0x48,0x54,0x54,0x54,0x20, // 0x73 's'
-  0x04,0x3F,0x44,0x40,0x20, // 0x74 't'
-  0x3C,0x40,0x40,0x20,0x7C, // 0x75 'u'
-  0x1C,0x20,0x40,0x20,0x1C, // 0x76 'v'
-  0x3C,0x40,0x30,0x40,0x3C, // 0x77 'w'
-  0x44,0x28,0x10,0x28,0x44, // 0x78 'x'
-  0x0C,0x50,0x50,0x50,0x3C, // 0x79 'y'
-  0x44,0x64,0x54,0x4C,0x44, // 0x7A 'z'
-  0x00,0x08,0x36,0x41,0x00, // 0x7B '{'
-  0x00,0x00,0x7F,0x00,0x00, // 0x7C '|'
-  0x00,0x41,0x36,0x08,0x00, // 0x7D '}'
-  0x10,0x08,0x08,0x10,0x08, // 0x7E '~'
+  0x00,0x00,0x00,0x00,0x00, 0x00,0x00,0x5F,0x00,0x00, 0x00,0x07,0x00,0x07,0x00,
+  0x14,0x7F,0x14,0x7F,0x14, 0x24,0x2A,0x7F,0x2A,0x12, 0x23,0x13,0x08,0x64,0x62,
+  0x36,0x49,0x55,0x22,0x50, 0x00,0x05,0x03,0x00,0x00, 0x00,0x1C,0x22,0x41,0x00,
+  0x00,0x41,0x22,0x1C,0x00, 0x14,0x08,0x3E,0x08,0x14, 0x08,0x08,0x3E,0x08,0x08,
+  0x00,0x50,0x30,0x00,0x00, 0x08,0x08,0x08,0x08,0x08, 0x00,0x60,0x60,0x00,0x00,
+  0x20,0x10,0x08,0x04,0x02, 0x3E,0x51,0x49,0x45,0x3E, 0x00,0x42,0x7F,0x40,0x00,
+  0x42,0x61,0x51,0x49,0x46, 0x21,0x41,0x45,0x4B,0x31, 0x18,0x14,0x12,0x7F,0x10,
+  0x27,0x45,0x45,0x45,0x39, 0x3C,0x4A,0x49,0x49,0x30, 0x01,0x71,0x09,0x05,0x03,
+  0x36,0x49,0x49,0x49,0x36, 0x06,0x49,0x49,0x29,0x1E, 0x00,0x36,0x36,0x00,0x00,
+  0x00,0x56,0x36,0x00,0x00, 0x08,0x14,0x22,0x41,0x00, 0x14,0x14,0x14,0x14,0x14,
+  0x00,0x41,0x22,0x14,0x08, 0x02,0x01,0x51,0x09,0x06, 0x32,0x49,0x79,0x41,0x3E,
+  0x7E,0x11,0x11,0x11,0x7E, 0x7F,0x49,0x49,0x49,0x36, 0x3E,0x41,0x41,0x41,0x22,
+  0x7F,0x41,0x41,0x22,0x1C, 0x7F,0x49,0x49,0x49,0x41, 0x7F,0x09,0x09,0x09,0x01,
+  0x3E,0x41,0x49,0x49,0x7A, 0x7F,0x08,0x08,0x08,0x7F, 0x00,0x41,0x7F,0x41,0x00,
+  0x20,0x40,0x41,0x3F,0x01, 0x7F,0x08,0x14,0x22,0x41, 0x7F,0x40,0x40,0x40,0x40,
+  0x7F,0x02,0x0C,0x02,0x7F, 0x7F,0x04,0x08,0x10,0x7F, 0x3E,0x41,0x41,0x41,0x3E,
+  0x7F,0x09,0x09,0x09,0x06, 0x3E,0x41,0x51,0x21,0x5E, 0x7F,0x09,0x19,0x29,0x46,
+  0x46,0x49,0x49,0x49,0x31, 0x01,0x01,0x7F,0x01,0x01, 0x3F,0x40,0x40,0x40,0x3F,
+  0x1F,0x20,0x40,0x20,0x1F, 0x3F,0x40,0x38,0x40,0x3F, 0x63,0x14,0x08,0x14,0x63,
+  0x07,0x08,0x70,0x08,0x07, 0x61,0x51,0x49,0x45,0x43, 0x00,0x41,0x7F,0x40,0x00,
+  0x02,0x04,0x08,0x10,0x20, 0x00,0x40,0x7F,0x41,0x00, 0x04,0x02,0x01,0x02,0x04,
+  0x40,0x40,0x40,0x40,0x40, 0x00,0x01,0x02,0x04,0x00, 0x20,0x54,0x54,0x54,0x78,
+  0x7F,0x48,0x44,0x44,0x38, 0x38,0x44,0x44,0x44,0x20, 0x38,0x44,0x44,0x48,0x7F,
+  0x38,0x54,0x54,0x54,0x18, 0x08,0x7E,0x09,0x01,0x02, 0x0C,0x52,0x52,0x52,0x3E,
+  0x7F,0x08,0x04,0x04,0x78, 0x00,0x44,0x7D,0x40,0x00, 0x20,0x40,0x44,0x3D,0x00,
+  0x7F,0x10,0x28,0x44,0x00, 0x00,0x41,0x7F,0x40,0x00, 0x7C,0x04,0x18,0x04,0x78,
+  0x7C,0x08,0x04,0x04,0x78, 0x38,0x44,0x44,0x44,0x38, 0x7C,0x14,0x14,0x14,0x08,
+  0x08,0x14,0x14,0x18,0x7C, 0x7C,0x08,0x04,0x04,0x08, 0x48,0x54,0x54,0x54,0x20,
+  0x04,0x3F,0x44,0x40,0x20, 0x3C,0x40,0x40,0x20,0x7C, 0x1C,0x20,0x40,0x20,0x1C,
+  0x3C,0x40,0x30,0x40,0x3C, 0x44,0x28,0x10,0x28,0x44, 0x0C,0x50,0x50,0x50,0x3C,
+  0x44,0x64,0x54,0x4C,0x44, 0x00,0x08,0x36,0x41,0x00, 0x00,0x00,0x7F,0x00,0x00,
+  0x00,0x41,0x36,0x08,0x00, 0x10,0x08,0x08,0x10,0x08,
 ];
 
-// Pixel-perfect text via bitmap font — no canvas text API, no antialiasing.
 function drawText(text, cx, cy, r, g, b, size) {
   const s = size || 1;
   let x = cx;
@@ -491,10 +492,43 @@ function drawText(text, cx, cy, r, g, b, size) {
   }
 }
 
+// 3×5 chronometer font. Column bitmaps: bit0=top row, bit4=bottom row.
+// Characters are variable width (cols.length + 1px gap).
+const CHRONO_FONT = {
+  '0':[31,17,31],  '1':[18,31,16],  '2':[29,21,23],
+  '3':[21,21,31],  '4':[7, 4, 31],  '5':[23,21,29],
+  '6':[31,21,29],  '7':[1, 1, 31],  '8':[31,21,31],
+  '9':[23,21,31],  ':':[10],        ' ':[0,0],
+  'A':[31, 5,31],  'P':[31, 5, 7],  'M':[31,3,3,31],
+};
+
+function drawChrono(text, cx, cy, r, g, b) {
+  let x = cx;
+  for (const ch of text) {
+    const cols = CHRONO_FONT[ch] || CHRONO_FONT[' '];
+    for (let col = 0; col < cols.length; col++) {
+      const bits = cols[col];
+      for (let row = 0; row < 5; row++) {
+        if (bits & (1 << row)) setPixel(x + col, cy + row, r, g, b);
+      }
+    }
+    x += cols.length + 1;
+  }
+}
+
 // ── Stars ─────────────────────────────────────────────────────────────────────
-const STAR_SLOT = 42; // fixed — star positions never relocate
+const STAR_SLOT = 42;
+
+// Hand-placed anchor stars forming two small asterisms
+const CONSTELLATION_ANCHORS = [
+  {x:15,y:5,s:201},{x:21,y:6,s:202},{x:27,y:5,s:203},   // belt
+  {x:90,y:3,s:204},{x:87,y:8,s:205},{x:93,y:8,s:206},{x:90,y:13,s:207}, // cross
+  {x:108,y:4,s:208},                                       // lone bright
+];
+
 function drawSparkles(t) {
   if (!cfg.show_stars) return;
+  const [wr,wg,wb] = unpack(cfg.color_wave);
   for (let y = 1; y < 22; y++) {
     for (let x = 0; x < W; x++) {
       if (pxHash(x, y, STAR_SLOT) < 0.008) {
@@ -502,10 +536,61 @@ function drawSparkles(t) {
         const phase = pxHash(x, y, STAR_SLOT+300) * 6.2832;
         const bright = 0.25 + 0.75 * (Math.sin(t * freq + phase) * 0.5 + 0.5);
         const v = Math.round(bright * 230);
-        setPixel(x, y, v, v, v);
+        if (noct.stars_tint && y >= 17) {
+          const tint = (y - 17) / 4.0 * 0.35;
+          setPixel(x, y,
+            Math.round(v*(1-tint) + wr*tint),
+            Math.round(v*(1-tint) + wg*tint),
+            Math.round(v*(1-tint) + wb*tint));
+        } else {
+          setPixel(x, y, v, v, v);
+        }
       }
     }
   }
+  if (noct.stars_constellation) {
+    for (const star of CONSTELLATION_ANCHORS) {
+      const freq  = 0.001 + pxHash(star.x, star.y, star.s) * 0.003;
+      const phase = pxHash(star.x, star.y, star.s+50) * 6.2832;
+      const bright = 0.5 + 0.5 * (Math.sin(t * freq + phase) * 0.5 + 0.5);
+      const v = Math.round(bright * 255);
+      setPixel(star.x, star.y, v, v, v);
+    }
+  }
+}
+
+// ── Aurora ────────────────────────────────────────────────────────────────────
+function drawAurora(t) {
+  if (!noct.aurora) return;
+  for (let x = 0; x < W; x++) {
+    const b1 = Math.sin(x * 0.05 + t * 0.00007) * 0.5 + 0.5;
+    const b2 = Math.sin(x * 0.09 - t * 0.00005 + 1.8) * 0.5 + 0.5;
+    const band = b1 * 0.6 + b2 * 0.4;
+    for (let y = 0; y < 22; y++) {
+      const rowFade = y < 11 ? y / 11.0 : (21 - y) / 10.0;
+      const intensity = Math.max(0, band * rowFade - 0.28);
+      if (intensity > 0) {
+        const v = Math.round(intensity * 22);
+        setPixel(x, y, Math.round(v*0.2), Math.min(255,v), Math.min(255,Math.round(v*1.5)));
+      }
+    }
+  }
+}
+
+// ── Instrument frame around glucose number ────────────────────────────────────
+function drawGlucoseFrame(mgdl) {
+  if (!noct.glucose_frame) return;
+  const [r,g,b] = vcol(mgdl);
+  const fr=Math.round(r*0.28), fg=Math.round(g*0.28), fb=Math.round(b*0.28);
+  for (let x = 1; x <= 54; x++) {
+    setPixel(x, 2, fr, fg, fb);
+    setPixel(x,19, fr, fg, fb);
+  }
+  // corner ticks
+  setPixel(1, 3,fr,fg,fb); setPixel(1, 4,fr,fg,fb);
+  setPixel(1,17,fr,fg,fb); setPixel(1,18,fr,fg,fb);
+  setPixel(54, 3,fr,fg,fb); setPixel(54, 4,fr,fg,fb);
+  setPixel(54,17,fr,fg,fb); setPixel(54,18,fr,fg,fb);
 }
 
 // ── Wave strip ────────────────────────────────────────────────────────────────
@@ -520,14 +605,31 @@ function drawStatusBar(sr, sg, sb, t) {
   }
   const t4    = Math.floor(t / 64);
   const speed = cfg.wave_speed === 0 ? 0.5 : cfg.wave_speed === 2 ? 2.0 : 1.0;
-  const wr = (cfg.color_wave>>>16)&0xFF, wg = (cfg.color_wave>>>8)&0xFF, wb = cfg.color_wave&0xFF;
+  const wr=(cfg.color_wave>>>16)&0xFF, wg=(cfg.color_wave>>>8)&0xFF, wb=cfg.color_wave&0xFF;
+
+  // Tide: amplitude and baseline shift with glucose zone
+  let amplitude = 1.5, baseline = 2.5;
+  if (noct.wave_tide) {
+    const m = state.value_mgdl;
+    const isAlert = m <= cfg.glucose_low || m >= cfg.glucose_high;
+    const isWarn  = m <= cfg.glucose_warn_low || m >= cfg.glucose_warn_high;
+    if (isAlert)     { amplitude = 3.8; baseline = 3.2; }
+    else if (isWarn) { amplitude = 2.5; baseline = 2.8; }
+  }
+
+  // Pre-compute wave surface per column (needed by reflection + particles)
+  const surfaces = new Float32Array(W);
   for (let x = 0; x < W; x++) {
     const ft = t * 0.001 * speed;
     const wave = (Math.sin(x*0.130 - ft*3.00)
                 + Math.sin(x*0.071 + ft*2.10) * 0.55
                 + Math.sin(x*0.211 - ft*3.30) * 0.35
                 + Math.sin(x*0.047 + ft*1.40) * 0.25) / 2.15;
-    const surface = 2.5 + 1.5 * wave;
+    surfaces[x] = baseline + amplitude * wave;
+  }
+
+  for (let x = 0; x < W; x++) {
+    const surface = surfaces[x];
     for (let row = 0; row < WAVE_H; row++) {
       const d = row - surface;
       let bright = d < 0
@@ -539,13 +641,51 @@ function drawStatusBar(sr, sg, sb, t) {
       let r = Math.round(wr * bright);
       let g = Math.round(wg * bright);
       let b = Math.min(255, Math.round(wb * bright + 18.0 * (1.0 - bright)));
+
+      // Abyssal depth: shift hue toward midnight indigo at bottom rows
+      if (noct.wave_enhanced) {
+        const depth = row / (WAVE_H - 1);
+        r = Math.round(r * (1 - depth * 0.75) + 15 * depth);
+        g = Math.round(g * (1 - depth * 0.85));
+        b = Math.min(255, Math.round(b * (1 - depth * 0.2) + 45 * depth));
+      }
       setPixel(x, WAVE_Y + row, r, g, b);
+    }
+  }
+
+  if (noct.wave_enhanced) {
+    // Starlight reflections at wave surface
+    const reflPhase = t * 0.0007;
+    for (let x = 0; x < W; x++) {
+      if (pxHash(x, 77, STAR_SLOT) < 0.022) {
+        const v = Math.round((0.10 + 0.08 * pxHash(x, 78, STAR_SLOT)) * 230);
+        const wobble = Math.round(Math.sin(reflPhase + x * 0.5));
+        const reflRow = Math.min(WAVE_H-1, Math.max(0, Math.floor(surfaces[x]) + 1));
+        setPixel(Math.min(W-1, Math.max(0, x + wobble)), WAVE_Y + reflRow, v, v, Math.min(255,Math.round(v*1.15)));
+      }
+    }
+
+    // Plankton particles rising from wave crest
+    const slot  = Math.floor(t / 900);
+    const phase = (t % 900) / 900;
+    for (let x = 0; x < W; x++) {
+      if (pxHash(x, 99, slot) > 0.94) {
+        const drift = Math.floor(phase * 3);
+        const alpha = Math.max(0, 1 - phase * 1.5);
+        const v = Math.round(alpha * 200);
+        if (v > 0) {
+          const crestRow = WAVE_Y + Math.max(0, Math.floor(surfaces[x]) - 1);
+          const py = crestRow - drift;
+          if (py >= 0) setPixel(x, py, v, Math.round(v*0.92), v);
+        }
+      }
     }
   }
 }
 
-// ── Trend arrow ───────────────────────────────────────────────────────────────
+// ── Trend arrows ──────────────────────────────────────────────────────────────
 function drawTrendArrow(code, r, g, b) {
+  if (noct.arrows_bearing) { drawTrendArrowBearing(code, r, g, b); return; }
   const CX = 59, CY = 11;
   if (code === 1) {
     drawLine(CX-2,CY+4,CX-2,CY-4,r,g,b); drawLine(CX-2,CY-4,CX-4,CY-2,r,g,b);
@@ -561,48 +701,118 @@ function drawTrendArrow(code, r, g, b) {
   }
   let x1,y1,x2,y2,hx1,hy1,hx2,hy2;
   switch(code){
-    case 2:[x1,y1,x2,y2]=[CX,CY+4,CX,CY-4];           [hx1,hy1,hx2,hy2]=[CX-3,CY-1,CX+3,CY-1]; break;
-    case 6:[x1,y1,x2,y2]=[CX,CY-4,CX,CY+4];           [hx1,hy1,hx2,hy2]=[CX-3,CY+1,CX+3,CY+1]; break;
-    case 3:[x1,y1,x2,y2]=[CX-3,CY+3,CX+3,CY-3];       [hx1,hy1,hx2,hy2]=[CX,CY-3,CX+3,CY];     break;
-    case 5:[x1,y1,x2,y2]=[CX-3,CY-3,CX+3,CY+3];       [hx1,hy1,hx2,hy2]=[CX,CY+3,CX+3,CY];     break;
-    default:[x1,y1,x2,y2]=[CX-4,CY,CX+4,CY];          [hx1,hy1,hx2,hy2]=[CX+1,CY-3,CX+1,CY+3];
+    case 2:[x1,y1,x2,y2]=[CX,CY+4,CX,CY-4];     [hx1,hy1,hx2,hy2]=[CX-3,CY-1,CX+3,CY-1]; break;
+    case 6:[x1,y1,x2,y2]=[CX,CY-4,CX,CY+4];     [hx1,hy1,hx2,hy2]=[CX-3,CY+1,CX+3,CY+1]; break;
+    case 3:[x1,y1,x2,y2]=[CX-3,CY+3,CX+3,CY-3]; [hx1,hy1,hx2,hy2]=[CX,CY-3,CX+3,CY];     break;
+    case 5:[x1,y1,x2,y2]=[CX-3,CY-3,CX+3,CY+3]; [hx1,hy1,hx2,hy2]=[CX,CY+3,CX+3,CY];     break;
+    default:[x1,y1,x2,y2]=[CX-4,CY,CX+4,CY];    [hx1,hy1,hx2,hy2]=[CX+1,CY-3,CX+1,CY+3];
   }
   drawLine(x1,y1,x2,y2,r,g,b);
   drawLine(x2,y2,hx1,hy1,r,g,b);
   drawLine(x2,y2,hx2,hy2,r,g,b);
 }
 
+function drawTrendArrowBearing(code, r, g, b) {
+  const CX=59, CY=11;
+  function L(x1,y1,x2,y2) { drawLineThick(x1,y1,x2,y2,r,g,b); }
+  // Filled diamond tip (Manhattan distance ≤ 2)
+  function tip(px,py) {
+    for(let dy=-2;dy<=2;dy++)
+      for(let dx=-2;dx<=2;dx++)
+        if(Math.abs(dx)+Math.abs(dy)<=2) setPixel(px+dx,py+dy,r,g,b);
+  }
+  if (code===1) {
+    L(CX-3,CY+5,CX-3,CY-2); tip(CX-3,CY-4);
+    L(CX+2,CY+5,CX+2,CY-2); tip(CX+2,CY-4);
+    return;
+  }
+  if (code===7) {
+    L(CX-3,CY-5,CX-3,CY+2); tip(CX-3,CY+4);
+    L(CX+2,CY-5,CX+2,CY+2); tip(CX+2,CY+4);
+    return;
+  }
+  let x1,y1,x2,y2;
+  switch(code){
+    case 2: [x1,y1,x2,y2]=[CX,CY+5,CX,CY-3];     break;
+    case 6: [x1,y1,x2,y2]=[CX,CY-5,CX,CY+3];     break;
+    case 3: [x1,y1,x2,y2]=[CX-4,CY+4,CX+3,CY-3]; break;
+    case 5: [x1,y1,x2,y2]=[CX-4,CY-4,CX+3,CY+3]; break;
+    default:[x1,y1,x2,y2]=[CX-5,CY,CX+3,CY];
+  }
+  L(x1,y1,x2,y2); tip(x2,y2);
+}
+
 // ── Sparkline ─────────────────────────────────────────────────────────────────
+let sonarPrev = [];
+
 function drawSparkline(spark) {
   if (!cfg.show_sparkline || spark.length === 0) return;
-  const X0=88,Y0=2,HEIGHT=20,WIDTH=40,BAR_W=3;
+  const X0=88, Y0=2, HEIGHT=20, WIDTH=40, BAR_W=3;
   const count  = Math.min(spark.length, Math.floor(WIDTH/BAR_W));
   const startI = spark.length > count ? spark.length - count : 0;
-  let lo=40,hi=400;
+  let lo=40, hi=400;
   if (cfg.sparkline_auto && count > 0) {
-    let mn=spark[startI],mx=spark[startI];
+    let mn=spark[startI], mx=spark[startI];
     for(let i=startI+1;i<startI+count;i++){if(spark[i]<mn)mn=spark[i];if(spark[i]>mx)mx=spark[i];}
-    const rng=Math.max(20,mx-mn),pad=Math.max(5,Math.floor(rng/5));
+    const rng=Math.max(20,mx-mn), pad=Math.max(5,Math.floor(rng/5));
     lo=Math.max(40,mn-pad); hi=Math.min(400,mx+pad);
   }
   const yFor = v => Y0+HEIGHT-1-Math.round((Math.min(hi,Math.max(lo,v))-lo)/(hi-lo)*(HEIGHT-1));
+  const pxFor = i => X0 + i * BAR_W + 1;
+
+  // Threshold markers
   for(let x=X0;x<X0+WIDTH;x++){
     setPixel(x,yFor(cfg.glucose_warn_low),40,40,40);
     setPixel(x,yFor(cfg.glucose_warn_high),40,40,40);
   }
-  const pxFor = i => X0 + i * BAR_W + 1;
+
+  // Sonar: ghost previous frame at 25% brightness
+  if (noct.sparkline_sonar && sonarPrev.length > 0) {
+    for (const p of sonarPrev)
+      setPixel(p.x, p.y, Math.round(p.r*0.25), Math.round(p.g*0.25), Math.round(p.b*0.25));
+  }
+
+  // Abyss fill: dim gradient from line color (top) → wave color (bottom)
+  if (noct.sparkline_wake && count > 0) {
+    const [fw,gw,bw] = unpack(cfg.color_wave);
+    for (let i = 0; i < count; i++) {
+      const x  = pxFor(i);
+      const y  = yFor(spark[startI+i]);
+      const [lr,lg,lb] = vcol(spark[startI+i]);
+      const maxDy = Y0+HEIGHT-1 - y;
+      if (maxDy <= 0) continue;
+      for (let dy = 1; dy <= maxDy; dy++) {
+        const tv = dy / maxDy;
+        const alpha = (1 - tv) * 0.14;
+        setPixel(x, y+dy,
+          Math.round((lr*(1-tv) + fw*tv) * alpha),
+          Math.round((lg*(1-tv) + gw*tv) * alpha),
+          Math.round((lb*(1-tv) + bw*tv) * alpha));
+      }
+    }
+  }
+
+  // Draw lines with optional wake trail
+  const newPrev = [];
   for (let i = 1; i < count; i++) {
-    const [r,g,b] = valueColor(spark[startI+i]);
-    drawLine(pxFor(i-1), yFor(spark[startI+i-1]), pxFor(i), yFor(spark[startI+i]), r, g, b);
+    const x1=pxFor(i-1), y1=yFor(spark[startI+i-1]);
+    const x2=pxFor(i),   y2=yFor(spark[startI+i]);
+    const [r,g,b] = vcol(spark[startI+i]);
+    if (noct.sparkline_wake)
+      drawLine(x1,y1+1,x2,y2+1,Math.round(r*0.25),Math.round(g*0.25),Math.round(b*0.25));
+    drawLine(x1,y1,x2,y2,r,g,b);
+    newPrev.push({x:x1,y:y1,r,g,b});
   }
   if (count > 0) {
-    const last = count - 1;
-    const [r,g,b] = valueColor(spark[startI+last]);
-    setPixel(pxFor(last), yFor(spark[startI+last]), r, g, b);
+    const last=count-1, x=pxFor(last), y=yFor(spark[startI+last]);
+    const [r,g,b]=vcol(spark[startI+last]);
+    setPixel(x,y,r,g,b);
+    newPrev.push({x,y,r,g,b});
   }
+  sonarPrev = noct.sparkline_sonar ? newPrev : [];
 }
 
-// ── Render loop (~20 fps) ─────────────────────────────────────────────────────
+// ── Render loop ───────────────────────────────────────────────────────────────
 const startTime = performance.now();
 let lastFrame=0, fpsCount=0, fpsLast=performance.now();
 
@@ -617,29 +827,29 @@ function render(now) {
   }
   const t = now - startTime;
 
-  // 1. Clear pixel buffer
   px.fill(0);
   for (let i=3; i<px.length; i+=4) px[i]=255;
 
-  const mgdl         = state.value_mgdl;
-  const [cr,cg,cb]   = valueColor(mgdl);
-  const alert        = mgdl <= cfg.glucose_low || mgdl >= cfg.glucose_high;
-  const [lr,lg,lb]   = unpack(cfg.color_low);
+  const mgdl       = state.value_mgdl;
+  const [cr,cg,cb] = vcol(mgdl);
+  const alert      = mgdl <= cfg.glucose_low || mgdl >= cfg.glucose_high;
+  const alertColor = noct.palette_noct ? [255,48,48] : unpack(cfg.color_low);
 
-  // 2. Stars
+  // Aurora drawn first — everything else renders on top
+  drawAurora(t);
+
+  // Stars
   drawSparkles(t);
 
   if (!state.error) {
-    // 3. Sparkline + arrow
+    drawGlucoseFrame(mgdl);
     drawSparkline(state.sparkline);
     drawTrendArrow(state.trend_code, cr, cg, cb);
-    // 4. Wave
     drawStatusBar(cr, cg, cb, t);
   } else {
-    drawStatusBar(lr, lg, lb, t);
+    drawStatusBar(...alertColor, t);
   }
 
-  // 5. Text — all drawn into pixel buffer (bitmap font, zero antialiasing)
   if (!state.error) {
     let [gr,gg,gb] = [cr,cg,cb];
     if (alert) {
@@ -652,17 +862,17 @@ function render(now) {
     }
     drawText(String(mgdl), 1, 3, gr, gg, gb, 2);
 
-    if (cfg.show_age) drawText('5m', 71, 3, 160, 160, 160, 1);
+    if (cfg.show_age) drawText('5m', 71, 3, 160,160,160, 1);
 
     if (cfg.show_status_label) {
-      if      (mgdl <= cfg.glucose_low)           drawText('LO',  71,13,255, 34,  0,1);
-      else if (mgdl >= cfg.glucose_high)          drawText('HI',  71,13,255, 34,  0,1);
-      else if (mgdl <= cfg.glucose_warn_low)      drawText('LO?', 71,13,255,204,  0,1);
-      else if (mgdl >= cfg.glucose_warn_high)     drawText('HI?', 71,13,255,204,  0,1);
+      if      (mgdl <= cfg.glucose_low)       drawText('LO',  71,13,255, 34,  0,1);
+      else if (mgdl >= cfg.glucose_high)      drawText('HI',  71,13,255, 34,  0,1);
+      else if (mgdl <= cfg.glucose_warn_low)  drawText('LO?', 71,13,255,204,  0,1);
+      else if (mgdl >= cfg.glucose_warn_high) drawText('HI?', 71,13,255,204,  0,1);
     }
 
     if (state.stale) {
-      drawText('STALE', 2, 24, 200, 200, 200, 1);
+      drawText('STALE', 2, 24, 200,200,200, 1);
     } else {
       const d = new Date();
       let ts;
@@ -672,16 +882,35 @@ function render(now) {
         const h = d.getHours()%12||12;
         ts = `${h}:${String(d.getMinutes()).padStart(2,'0')} ${d.getHours()<12?'AM':'PM'}`;
       }
-      drawText(ts, 2, 24, 220, 220, 220, 1);
+      if (noct.clock_chrono) {
+        drawChrono(ts, 2, 25, 80, 200, 215);
+      } else {
+        drawText(ts, 2, 24, 220,220,220, 1);
+      }
+    }
+
+    // Alert sweep: bioluminescent flash races L→R each pulse cycle
+    if (noct.alert_sweep && alert) {
+      const period = cfg.pulse_speed===0 ? 2000 : cfg.pulse_speed===2 ? 500 : 1000;
+      const phase  = (t % period) / period;
+      if (phase < 0.38) {
+        const sweepX  = Math.round(phase / 0.38 * (W + 6));
+        const fadeAmt = 1 - phase / 0.38;
+        for (let y = 0; y < H; y++) {
+          const sv = Math.round(fadeAmt * 170);
+          if (sweepX   < W) setPixel(sweepX,   y, 0, sv, Math.round(sv*0.82));
+          const sv2 = Math.round(fadeAmt * 55);
+          if (sweepX-1 >= 0 && sweepX-1 < W) setPixel(sweepX-1, y, 0, sv2, Math.round(sv2*0.82));
+          const sv3 = Math.round(fadeAmt * 18);
+          if (sweepX-2 >= 0 && sweepX-2 < W) setPixel(sweepX-2, y, 0, sv3, Math.round(sv3*0.82));
+        }
+      }
     }
   } else {
-    drawText('ERROR', 2, 24, 255, 80, 60, 1);
+    drawText('ERROR', 2, 24, 255,80,60, 1);
   }
 
-  // 6. Commit pixel buffer → offscreen canvas
   octx.putImageData(img, 0, 0);
-
-  // 7. Scale offscreen → visible (6×), optional 180° flip
   vctx.imageSmoothingEnabled = false;
   if (state.flipped) {
     vctx.save(); vctx.translate(768,192); vctx.rotate(Math.PI);
@@ -721,9 +950,9 @@ function setPreset(mgdl,trend) {
   document.getElementById('t-error').classList.remove('on');
   updateTrendButtons(); pushSparkline(mgdl);
 }
+
 function copyConfig() {
   const hex = v => '#'+(v&0xFFFFFF).toString(16).padStart(6,'0');
-  // Format matches device GET /config exactly — importable by device and sim alike.
   const out = {
     glucose_low:cfg.glucose_low, glucose_high:cfg.glucose_high,
     glucose_warn_low:cfg.glucose_warn_low, glucose_warn_high:cfg.glucose_warn_high,
@@ -754,36 +983,24 @@ function importConfig(input) {
     try { d = JSON.parse(e.target.result); } catch { alert('Invalid JSON file.'); return; }
     const hex2int = s => s ? parseInt(s.replace('#',''), 16) : undefined;
     const apply = (key, val) => { if (val !== undefined && key in cfg) cfg[key] = val; };
-    apply('glucose_low',        d.glucose_low);
-    apply('glucose_high',       d.glucose_high);
-    apply('glucose_warn_low',   d.glucose_warn_low);
-    apply('glucose_warn_high',  d.glucose_warn_high);
-    apply('clock_24h',          d.clock_24h);
-    apply('pulse_speed',        d.pulse_speed);
-    apply('pulse_min',          d.pulse_min);
-    apply('wave_speed',         d.wave_speed);
-    apply('status_bar_style',   d.status_bar_style);
-    apply('show_sparkline',     d.show_sparkline);
-    apply('sparkline_auto',     d.sparkline_auto);
-    apply('show_age',           d.show_age);
-    apply('show_status_label',  d.show_status_label);
-    apply('show_stars',         d.show_stars);
+    apply('glucose_low',d.glucose_low); apply('glucose_high',d.glucose_high);
+    apply('glucose_warn_low',d.glucose_warn_low); apply('glucose_warn_high',d.glucose_warn_high);
+    apply('clock_24h',d.clock_24h); apply('pulse_speed',d.pulse_speed);
+    apply('pulse_min',d.pulse_min); apply('wave_speed',d.wave_speed);
+    apply('status_bar_style',d.status_bar_style); apply('show_sparkline',d.show_sparkline);
+    apply('sparkline_auto',d.sparkline_auto); apply('show_age',d.show_age);
+    apply('show_status_label',d.show_status_label); apply('show_stars',d.show_stars);
     if (d.color_low)  cfg.color_low  = hex2int(d.color_low);
     if (d.color_warn) cfg.color_warn = hex2int(d.color_warn);
     if (d.color_ok)   cfg.color_ok   = hex2int(d.color_ok);
     if (d.color_wave) cfg.color_wave = hex2int(d.color_wave);
-    // Sync UI controls to reflect imported values
     document.querySelectorAll('[name]').forEach(el => {
       const k = el.name;
       if (!(k in cfg)) return;
       const v = cfg[k];
-      if (el.type === 'color') {
-        el.value = '#'+(v&0xFFFFFF).toString(16).padStart(6,'0');
-      } else if (el.tagName === 'SELECT') {
-        el.value = String(v);
-      } else {
-        el.value = v;
-      }
+      if (el.type === 'color') el.value = '#'+(v&0xFFFFFF).toString(16).padStart(6,'0');
+      else if (el.tagName === 'SELECT') el.value = String(v);
+      else el.value = v;
     });
     applyBarVis();
     const toast = document.getElementById('copy-toast');

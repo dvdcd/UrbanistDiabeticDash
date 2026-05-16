@@ -1,6 +1,6 @@
 {
   "name": "Diabetic Dash",
-  "version": "20260516-71a1ee2",
+  "version": "20260516-646b5bd",
   "builds": [
     {
       "chipFamily": "ESP32-S3",

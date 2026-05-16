@@ -176,12 +176,9 @@
 
   <section>
     <h2>Display</h2>
-    <label>
-      Glucose units
-      <select name="unit_mgdl">
-        <option value="true">mg/dL</option>
-        <option value="false">mmol/L</option>
-      </select>
+    <label class="cb-label">
+      <input type="checkbox" name="unit_mgdl" checked>
+      mg/dL units
     </label>
     <div class="row">
       <label>
@@ -211,12 +208,10 @@
 
   <section>
     <h2>Style</h2>
-    <label>
-      Clock format
-      <select name="clock_24h" onchange="cfg.clock_24h = this.value==='true'">
-        <option value="false">12-hour (AM/PM)</option>
-        <option value="true">24-hour</option>
-      </select>
+    <label class="cb-label">
+      <input type="checkbox" name="clock_24h"
+             onchange="cfg.clock_24h=this.checked">
+      24-hour clock
     </label>
     <label class="cb-label">
       <input type="checkbox" name="show_clock" checked
@@ -236,19 +231,15 @@
       <input name="pulse_min" type="number" min="0" max="90" step="5" value="50"
              oninput="cfg.pulse_min=+this.value">
     </label>
-    <label>
-      Sparkline
-      <select name="show_sparkline" onchange="cfg.show_sparkline=this.value==='true'">
-        <option value="true">Show</option>
-        <option value="false">Hide</option>
-      </select>
+    <label class="cb-label">
+      <input type="checkbox" name="show_sparkline" checked
+             onchange="cfg.show_sparkline=this.checked">
+      Show sparkline
     </label>
-    <label>
-      Sparkline range
-      <select name="sparkline_auto" onchange="cfg.sparkline_auto=this.value==='true'">
-        <option value="false">Fixed (40–400 mg/dL)</option>
-        <option value="true">Auto-fit</option>
-      </select>
+    <label class="cb-label">
+      <input type="checkbox" name="sparkline_auto"
+             onchange="cfg.sparkline_auto=this.checked">
+      Auto-fit sparkline range
     </label>
     <label class="cb-label">
       <input type="checkbox" name="sparkline_shadow"
@@ -261,30 +252,18 @@
       Sparkline area fill
     </label>
     <label class="cb-label">
-      <input type="checkbox" name="sparkline_sonar"
-             onchange="cfg.sparkline_sonar=this.checked">
-      Sonar trail (phosphor ghost)
+      <input type="checkbox" name="show_age" checked
+             onchange="cfg.show_age=this.checked">
+      Show reading age
     </label>
-    <label>
-      Reading age indicator
-      <select name="show_age" onchange="cfg.show_age=this.value==='true'">
-        <option value="true">Show</option>
-        <option value="false">Hide</option>
-      </select>
+    <label class="cb-label">
+      <input type="checkbox" name="show_status_label" checked
+             onchange="cfg.show_status_label=this.checked">
+      Show HI/LO label
     </label>
-    <label>
-      Status label (HI / LO)
-      <select name="show_status_label" onchange="cfg.show_status_label=this.value==='true'">
-        <option value="true">Show</option>
-        <option value="false">Hide</option>
-      </select>
-    </label>
-    <label>
-      Auto-rotate with gyro
-      <select name="auto_rotate">
-        <option value="true">Enabled</option>
-        <option value="false">Disabled</option>
-      </select>
+    <label class="cb-label">
+      <input type="checkbox" name="auto_rotate">
+      Auto-rotate (gyro)
     </label>
   </section>
 
@@ -406,7 +385,7 @@ const cfg = {
   clock_24h: false, pulse_speed: 1, pulse_min: 50,
   wave_speed: 0, status_bar_style: 2,
   show_sparkline: true, sparkline_auto: false,
-  sparkline_shadow: false, sparkline_fill: false, sparkline_sonar: false,
+  sparkline_shadow: false, sparkline_fill: false,
   show_age: true, show_status_label: true, show_clock: true,
   show_stars: false,
   tide_strength: 75,
@@ -435,9 +414,14 @@ function setAllNoct(v) {
   document.querySelectorAll('#noct-section input[type=checkbox]').forEach(cb => cb.checked = v);
   cfg.status_bar_style = v ? 0 : 2;
   cfg.show_stars = v;
+  const waveEl = document.getElementById('n-show_wave');
+  if (waveEl) waveEl.checked = v;
+  const starsEl = document.getElementById('n-show_stars');
+  if (starsEl) starsEl.checked = v;
   document.getElementById('tide-strength-row').style.display = v ? '' : 'none';
   document.getElementById('wave2-color-row').style.display   = v ? '' : 'none';
   document.getElementById('boat-colors-row').style.display   = v ? '' : 'none';
+  if (v) applyOceanPalette();
 }
 
 function noctTideChanged(checked) {
@@ -451,10 +435,10 @@ function noctBoatChanged(checked) {
 }
 
 function applyOceanPalette() {
-  cfg.color_low  = 0xFF3030; cfg.color_warn = 0xFFAA00;
+  cfg.color_low  = 0x8E0045; cfg.color_warn = 0x5386E4;
   cfg.color_ok   = 0x00E5CC; cfg.color_wave = 0x002080;
-  document.querySelector('[name=color_low]').value  = '#ff3030';
-  document.querySelector('[name=color_warn]').value = '#ffaa00';
+  document.querySelector('[name=color_low]').value  = '#8e0045';
+  document.querySelector('[name=color_warn]').value = '#5386e4';
   document.querySelector('[name=color_ok]').value   = '#00e5cc';
   document.querySelector('[name=color_wave]').value = '#002080';
 }
@@ -683,8 +667,8 @@ function drawStatusBar(sr, sg, sb, t) {
     const [hr,hg,hb] = unpack(cfg.color_boat_hull);
     const [saR,saG,saB] = unpack(cfg.color_boat_sail);
 
-    // Raft (3px, centered, edge-shaded)
-    drawShaded(bx-1, bx+1, by, hr, hg, hb);
+    // Raft (7px, centered, edge-shaded)
+    drawShaded(bx-3, bx+3, by, hr, hg, hb);
 
     // Sail: right-triangle, vertical right edge (mast), hypotenuse left
     // Base row (5px): bx-2..bx+2
@@ -725,8 +709,6 @@ function drawTrendArrow(code, r, g, b) {
 }
 
 // ── Sparkline ─────────────────────────────────────────────────────────────────
-let sonarPrev = [];
-
 function drawSparkline(spark) {
   if (!cfg.show_sparkline || spark.length === 0) return;
   const X0=88, Y0=2, HEIGHT=20, WIDTH=40, BAR_W=3;
@@ -745,12 +727,6 @@ function drawSparkline(spark) {
   for(let x=X0;x<X0+WIDTH;x++){
     setPixel(x,yFor(cfg.glucose_warn_low),40,40,40);
     setPixel(x,yFor(cfg.glucose_warn_high),40,40,40);
-  }
-
-  // Sonar: ghost previous frame at 25%
-  if (cfg.sparkline_sonar && sonarPrev.length > 0) {
-    for (const p of sonarPrev)
-      setPixel(p.x, p.y, Math.round(p.r*0.25), Math.round(p.g*0.25), Math.round(p.b*0.25));
   }
 
   // Area fill: gradient from line color → wave color below each point
@@ -774,7 +750,6 @@ function drawSparkline(spark) {
   }
 
   // Lines with optional drop shadow (y+1 at 25%)
-  const newPrev = [];
   for (let i = 1; i < count; i++) {
     const x1=pxFor(i-1), y1=yFor(spark[startI+i-1]);
     const x2=pxFor(i),   y2=yFor(spark[startI+i]);
@@ -782,15 +757,12 @@ function drawSparkline(spark) {
     if (cfg.sparkline_shadow)
       drawLine(x1,y1+1,x2,y2+1,Math.round(r*0.25),Math.round(g*0.25),Math.round(b*0.25));
     drawLine(x1,y1,x2,y2,r,g,b);
-    newPrev.push({x:x1,y:y1,r,g,b});
   }
   if (count > 0) {
     const last=count-1, x=pxFor(last), y=yFor(spark[startI+last]);
     const [r,g,b]=valueColor(spark[startI+last]);
     setPixel(x,y,r,g,b);
-    newPrev.push({x,y,r,g,b});
   }
-  sonarPrev = cfg.sparkline_sonar ? newPrev : [];
 }
 
 // ── Render loop ───────────────────────────────────────────────────────────────
@@ -918,7 +890,6 @@ function copyConfig() {
     wave_speed:cfg.wave_speed, status_bar_style:cfg.status_bar_style,
     show_sparkline:cfg.show_sparkline, sparkline_auto:cfg.sparkline_auto,
     sparkline_shadow:cfg.sparkline_shadow, sparkline_fill:cfg.sparkline_fill,
-    sparkline_sonar:cfg.sparkline_sonar,
     show_age:cfg.show_age, show_status_label:cfg.show_status_label,
     show_stars:cfg.show_stars, tide_strength:cfg.tide_strength,
     color_low:hex(cfg.color_low), color_warn:hex(cfg.color_warn),

@@ -88,6 +88,7 @@ void DashWebServer::begin() {
     doc["glucose_warn_high"]  = cfg.glucose_warn_high;
     doc["unit_mgdl"]          = cfg.unit_mgdl;
     doc["timezone"]           = cfg.timezone;
+    doc["brightness"]         = cfg.brightness;
     // Style
     doc["clock_24h"]          = cfg.clock_24h;
     doc["pulse_speed"]        = cfg.pulse_speed;
@@ -179,6 +180,8 @@ void DashWebServer::begin() {
       if (doc["timezone"].is<String>() &&
           doc["timezone"].as<String>().length() > 0)
         cfg.timezone            = doc["timezone"].as<String>();
+      if (doc["brightness"].is<int>())
+        cfg.brightness          = (uint8_t)constrain(doc["brightness"].as<int>(), 10, 255);
       // Style
       if (doc["clock_24h"].is<bool>())
         cfg.clock_24h           = doc["clock_24h"].as<bool>();

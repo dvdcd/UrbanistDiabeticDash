@@ -343,13 +343,22 @@
     sourceSelect.addEventListener('change', e => applySourceVisibility(e.target.value));
     barStyleSelect.addEventListener('change', e => applyBarStyleVisibility(e.target.value));
 
+    const NOCT_FIELDS = ['wave_enhanced','wave_tide','stars_const','stars_tint',
+                          'sparkline_wake','sparkline_sonar','palette_noct','arrows_bearing',
+                          'aurora','alert_sweep','glucose_frame','clock_chrono'];
+
     // Populate form with current config on load (passwords excluded).
     fetch('/config')
       .then(r => r.json())
       .then(cfg => {
         for (const [key, val] of Object.entries(cfg)) {
           const el = document.querySelector(`[name="${key}"]`);
-          if (el) el.value = val;
+          if (!el) continue;
+          if (el.type === 'checkbox') {
+            el.checked = !!val;
+          } else {
+            el.value = val;
+          }
         }
         applySourceVisibility(String(cfg.cgm_source ?? 0));
         applyBarStyleVisibility(String(cfg.status_bar_style ?? 0));
@@ -373,6 +382,12 @@
         } else {
           data[key] = val;  // strings and color hex values pass through as-is
         }
+      });
+      // Noctiluca checkboxes aren't included in FormData when unchecked, so
+      // read their state directly to ensure both true and false are always sent.
+      NOCT_FIELDS.forEach(name => {
+        const el = document.querySelector(`[name="${name}"]`);
+        if (el) data[name] = el.checked;
       });
 
       setStatus('Saving…', false);
@@ -528,9 +543,7 @@
       .catch(() => {});
 
     function setAllNoct(v) {
-      ['wave_enhanced','wave_tide','stars_const','stars_tint','sparkline_wake',
-       'sparkline_sonar','palette_noct','arrows_bearing','aurora','alert_sweep',
-       'glucose_frame','clock_chrono'].forEach(name => {
+      NOCT_FIELDS.forEach(name => {
         const el = document.querySelector('[name="'+name+'"]');
         if (el) el.checked = v;
       });

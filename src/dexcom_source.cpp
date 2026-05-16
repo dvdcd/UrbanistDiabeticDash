@@ -138,35 +138,85 @@ bool DexcomSource::login_(CGMData &out) {
 }
 
 bool DexcomSource::read_glucose_(CGMData &out) {
+  WiFiClientSecure client;
+  client.setInsecure();
+  HTTPClient http;
+
   String url = base_url_ +
       "/ShareWebServices/Services/Publisher/ReadPublisherLatestGlucoseValues"
       "?sessionId=" + session_id_ + "&minutes=60&maxCount=12";
-  String resp = http_post_(url, "");
 
-  if (resp.startsWith("ERR:")) {
-    // HTTP 500 with SessionNotValid means the session expired.
-    if (resp.indexOf("SessionNotValid") >= 0 || resp.indexOf(":500:") >= 0) {
+  if (!http.begin(client, url)) {
+    out.valid = false;
+    out.error = "HTTP begin failed";
+    return false;
+  }
+  http.addHeader("Content-Type", "application/json");
+  http.addHeader("Accept",       "application/json");
+  http.setTimeout(10000);
+
+  int code = http.POST("");
+
+  if (code != 200) {
+    String body = http.getString();
+    http.end();
+    if (body.indexOf("SessionNotValid") >= 0 || code == 500) {
       session_id_ = "";  // trigger re-auth on next call
     }
-    out.error = resp;
+    Serial.printf("[Dexcom] HTTP %d: %s\n", code, body.c_str());
     out.valid = false;
+    out.error = "HTTP " + String(code);
     return false;
   }
 
+  // getString() handles chunked transfer-encoding decoding; getStream() does not,
+  // so reading raw from the stream can produce InvalidInput on chunk-size headers.
+  String resp = http.getString();
+  http.end();
+
   JsonDocument doc;
   DeserializationError err = deserializeJson(doc, resp);
-  if (err || !doc.is<JsonArray>() || doc.size() == 0) {
-    out.error = "JSON parse error";
+
+  if (err) {
+    String snippet = resp.length() > 0 ? resp.substring(0, 120) : String("(empty)");
+    Serial.printf("[Dexcom] parse error (%s): %s\n", err.c_str(), snippet.c_str());
     out.valid = false;
+    // Surface the raw snippet in the web UI status card "Error detail" box.
+    out.error = String("JSON ") + err.c_str() + ": " + snippet;
+    return false;
+  }
+  if (!doc.is<JsonArray>()) {
+    // Dexcom sometimes returns a JSON error object (e.g. {"Code":"SessionNotValid"})
+    // with HTTP 200 when the session silently expires.
+    const char *code_str = doc["Code"] | "";
+    if (strstr(code_str, "SessionNotValid") || strstr(code_str, "Session")) {
+      session_id_ = "";  // force re-auth
+    }
+    String snippet = resp.substring(0, 120);
+    Serial.printf("[Dexcom] unexpected object: %s\n", snippet.c_str());
+    out.valid = false;
+    out.error = "Unexpected response: " + snippet;
+    return false;
+  }
+  if (doc.size() == 0) {
+    out.valid = false;
+    out.error = "No data";
     return false;
   }
 
   JsonArray arr = doc.as<JsonArray>();
 
   // Dexcom returns newest reading first.
-  JsonObject latest   = arr[0];
+  JsonObject latest      = arr[0];
   out.current.value_mgdl = latest["Value"] | 0;
-  out.current.trend_code = trend_str_to_code_(latest["Trend"] | "Flat");
+
+  // Trend may be a string ("Flat") or an integer trend code depending on API version.
+  if (latest["Trend"].is<int>()) {
+    out.current.trend_code = latest["Trend"].as<int>();
+  } else {
+    out.current.trend_code = trend_str_to_code_(latest["Trend"] | "Flat");
+  }
+
   out.current.timestamp  = parse_dexcom_time_(latest["WT"] | "");
 
   // Sparkline: reverse array so it's oldest-first for left→right rendering.

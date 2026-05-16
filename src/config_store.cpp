@@ -48,6 +48,7 @@ bool ConfigStore::load(DashConfig &out) {
   out.stars_tint        = prefs.getBool(  "st_tint",    false);
   out.boat_ride         = prefs.getBool(  "boat_ride",  false);
   out.aurora            = prefs.getBool(  "aurora",     false);
+  out.auto_update       = prefs.getBool(  "auto_upd",   false);
   prefs.end();
   return out.wifi_ssid.length() > 0;
 }
@@ -97,6 +98,7 @@ void ConfigStore::save(const DashConfig &c) {
   prefs.putBool(  "st_tint",     c.stars_tint);
   prefs.putBool(  "boat_ride",   c.boat_ride);
   prefs.putBool(  "aurora",      c.aurora);
+  prefs.putBool(  "auto_upd",    c.auto_update);
   prefs.end();
 }
 

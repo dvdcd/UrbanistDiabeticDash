@@ -88,6 +88,7 @@ void DashWebServer::begin() {
     doc["glucose_warn_high"]  = cfg.glucose_warn_high;
     doc["unit_mgdl"]          = cfg.unit_mgdl;
     doc["timezone"]           = cfg.timezone;
+    doc["brightness"]         = cfg.brightness;
     // Style
     doc["clock_24h"]          = cfg.clock_24h;
     doc["show_clock"]         = cfg.show_clock;
@@ -110,6 +111,7 @@ void DashWebServer::begin() {
     doc["stars_tint"]         = cfg.stars_tint;
     doc["boat_ride"]          = cfg.boat_ride;
     doc["aurora"]             = cfg.aurora;
+    doc["auto_update"]        = cfg.auto_update;
     // Colors as #rrggbb hex strings (safe for HTML color inputs).
     char cbuf[8];
     auto fmt_color = [&](uint32_t c) -> String {
@@ -179,6 +181,8 @@ void DashWebServer::begin() {
       if (doc["timezone"].is<String>() &&
           doc["timezone"].as<String>().length() > 0)
         cfg.timezone            = doc["timezone"].as<String>();
+      if (doc["brightness"].is<int>())
+        cfg.brightness          = (uint8_t)constrain(doc["brightness"].as<int>(), 10, 255);
       // Style
       if (doc["clock_24h"].is<bool>())
         cfg.clock_24h           = doc["clock_24h"].as<bool>();
@@ -215,6 +219,7 @@ void DashWebServer::begin() {
       if (doc["stars_tint"].is<bool>())       cfg.stars_tint       = doc["stars_tint"].as<bool>();
       if (doc["boat_ride"].is<bool>())        cfg.boat_ride        = doc["boat_ride"].as<bool>();
       if (doc["aurora"].is<bool>())           cfg.aurora           = doc["aurora"].as<bool>();
+      if (doc["auto_update"].is<bool>())      cfg.auto_update      = doc["auto_update"].as<bool>();
       // Colors — client sends "#rrggbb"; convert to packed uint32_t.
       auto parse_hex_color = [](const String &s) -> uint32_t {
         String h = s.startsWith("#") ? s.substring(1) : s;
@@ -526,4 +531,41 @@ void DashWebServer::run_ota_if_pending() {
               httpUpdate.getLastErrorString().c_str());
       break;
   }
+}
+
+bool DashWebServer::run_auto_update_check() {
+  Serial.println("[OTA-auto] Checking manifest...");
+
+  WiFiClientSecure client;
+  client.setInsecure();
+  HTTPClient http;
+  if (!http.begin(client, OTA_MANIFEST_URL)) {
+    Serial.println("[OTA-auto] manifest fetch failed (http.begin)");
+    return false;
+  }
+  http.setTimeout(8000);
+  int code = http.GET();
+  if (code != 200) {
+    Serial.printf("[OTA-auto] manifest HTTP %d\n", code);
+    http.end();
+    return false;
+  }
+  String body = http.getString();
+  http.end();
+
+  JsonDocument manifest;
+  if (deserializeJson(manifest, body)) {
+    Serial.println("[OTA-auto] manifest parse failed");
+    return false;
+  }
+  const char *latest  = manifest["version"] | "";
+  const char *current = FIRMWARE_VERSION;
+
+  if (strlen(latest) == 0 || strcmp(current, latest) == 0) {
+    Serial.printf("[OTA-auto] Up to date (%s)\n", current);
+    return false;
+  }
+
+  Serial.printf("[OTA-auto] Update available: %s\n", latest);
+  return true;
 }

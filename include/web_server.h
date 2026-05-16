@@ -16,6 +16,11 @@ class DashWebServer {
   // Call from loop() — executes a queued cloud OTA update if one is pending.
   void run_ota_if_pending();
 
+  // Call once after WiFi connects — fetches the manifest and compares versions.
+  // Blocks ~1–5 s for the HTTPS request.  Returns true if a newer version
+  // exists (caller should notify the user; does NOT flash anything).
+  bool run_auto_update_check();
+
   // Update the runtime status returned by GET /status.
   // Call from loop() after each CGM fetch — not from an async handler.
   void push_status(bool valid, const String &error, int value_mgdl = 0);

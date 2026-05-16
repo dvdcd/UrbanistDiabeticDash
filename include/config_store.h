@@ -53,6 +53,8 @@ struct DashConfig {
   bool stars_tint       = false;  // horizon glow: lower stars blended toward wave color
   bool boat_ride        = false;  // small boat sprite bobbing on wave surface
   bool aurora           = false;  // faint teal/violet aurora bands in content background
+  // OTA
+  bool auto_update      = false;  // check GitHub on boot and flash if newer
 };
 
 class ConfigStore {

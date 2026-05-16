@@ -158,13 +158,6 @@
     <section>
       <h2>Style</h2>
       <label>
-        Clock format
-        <select name="clock_24h">
-          <option value="false">12-hour (AM/PM)</option>
-          <option value="true">24-hour</option>
-        </select>
-      </label>
-      <label>
         Status bar
         <select name="status_bar_style" id="bar-style-select">
           <option value="0">Animated wave</option>
@@ -183,57 +176,26 @@
       <label>
         Alert pulse speed
         <select name="pulse_speed">
-          <option value="0">Slow (0.5 Hz)</option>
-          <option value="1">Normal (1 Hz)</option>
-          <option value="2">Fast (2 Hz)</option>
+          <option value="0">Very slow (0.25 Hz)</option>
+          <option value="1">Slow (0.5 Hz)</option>
+          <option value="2">Normal (1 Hz)</option>
         </select>
       </label>
       <label>
         Alert pulse minimum brightness (%)
         <input name="pulse_min" type="number" min="0" max="90" step="5">
       </label>
-      <label>
-        Sparkline
-        <select name="show_sparkline">
-          <option value="true">Show</option>
-          <option value="false">Hide</option>
-        </select>
-      </label>
-      <label>
-        Sparkline range
-        <select name="sparkline_auto">
-          <option value="false">Fixed (40–400 mg/dL)</option>
-          <option value="true">Auto-fit</option>
-        </select>
-      </label>
-      <label>
-        Reading age indicator
-        <select name="show_age">
-          <option value="true">Show</option>
-          <option value="false">Hide</option>
-        </select>
-      </label>
-      <label>
-        Status label (HI / LO)
-        <select name="show_status_label">
-          <option value="true">Show</option>
-          <option value="false">Hide</option>
-        </select>
-      </label>
-      <label>
-        Auto-rotate with gyro
-        <select name="auto_rotate">
-          <option value="true">Enabled</option>
-          <option value="false">Disabled</option>
-        </select>
-      </label>
-      <label>
-        Twinkling stars
-        <select name="show_stars">
-          <option value="true">On</option>
-          <option value="false">Off</option>
-        </select>
-      </label>
+      <div style="display:flex;flex-direction:column;gap:6px;margin:8px 0">
+        <label class="cb-row"><input type="checkbox" name="clock_24h"> 24-hour clock</label>
+        <label class="cb-row"><input type="checkbox" name="show_clock" checked> Show clock</label>
+        <label class="cb-row"><input type="checkbox" name="show_sparkline" checked> Show sparkline</label>
+        <label class="cb-row"><input type="checkbox" name="sparkline_auto"> Auto-fit sparkline range</label>
+        <label class="cb-row"><input type="checkbox" name="sparkline_shadow"> Sparkline drop shadow</label>
+        <label class="cb-row"><input type="checkbox" name="sparkline_fill"> Sparkline area fill</label>
+        <label class="cb-row"><input type="checkbox" name="show_age" checked> Show reading age</label>
+        <label class="cb-row"><input type="checkbox" name="show_status_label" checked> Show HI/LO label</label>
+        <label class="cb-row"><input type="checkbox" name="auto_rotate" checked> Auto-rotate (gyro)</label>
+      </div>
     </section>
 
     <section>
@@ -260,26 +222,35 @@
       </div>
     </section>
 
-    <section>
+    <section id="noct-section">
       <h2 style="color:#2a9aaa">✦ Noctiluca Theme</h2>
-      <p style="font-size:12px;color:#555;margin:0 0 10px">Bioluminescent night-ocean visuals. All features are off by default and independently toggleable.</p>
+      <p style="font-size:12px;color:#555;margin:0 0 10px">Bioluminescent night-ocean visuals. All features are off by default.</p>
       <div style="display:flex;gap:8px;margin-bottom:10px">
         <button type="button" style="flex:1;font-size:12px;padding:6px;background:#0f2a30" onclick="setAllNoct(true)">Enable All</button>
         <button type="button" style="flex:1;font-size:12px;padding:6px;background:#2a2a2a" onclick="setAllNoct(false)">Disable All</button>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:13px">
-        <label><input type="checkbox" name="wave_enhanced"> Abyssal wave (depth + reflections + particles)</label>
-        <label><input type="checkbox" name="wave_tide"> Tide encodes glucose zone</label>
-        <label><input type="checkbox" name="stars_const"> Constellation anchor stars</label>
-        <label><input type="checkbox" name="stars_tint"> Horizon glow on lower stars</label>
-        <label><input type="checkbox" name="sparkline_wake"> Wake trail + abyss under chart</label>
-        <label><input type="checkbox" name="sparkline_sonar"> Sonar phosphor persistence</label>
-        <label><input type="checkbox" name="palette_noct"> Bioluminescent color palette</label>
-        <label><input type="checkbox" name="arrows_bearing"> Navigation bearing arrows</label>
-        <label><input type="checkbox" name="aurora"> Aurora bands in background</label>
-        <label><input type="checkbox" name="alert_sweep"> Bioluminescent alert sweep</label>
-        <label><input type="checkbox" name="glucose_frame"> Instrument frame around glucose</label>
-        <label><input type="checkbox" name="clock_chrono"> Chronometer pixel font clock</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;font-size:13px;margin-bottom:10px">
+        <label class="cb-row"><input type="checkbox" name="show_stars"> Stars</label>
+        <label class="cb-row"><input type="checkbox" name="stars_tint"> Star horizon tint</label>
+        <label class="cb-row"><input type="checkbox" name="wave_enhanced" id="n-wave-enhanced" onchange="document.getElementById('wave2-color-row').style.display=this.checked?'':'none'"> Second wave color</label>
+        <label class="cb-row"><input type="checkbox" name="wave_tide" id="n-wave-tide" onchange="document.getElementById('tide-strength-row').style.display=this.checked?'':'none'"> Tide = glucose zone</label>
+        <label class="cb-row"><input type="checkbox" name="boat_ride" id="n-boat-ride" onchange="document.getElementById('boat-colors-row').style.display=this.checked?'':'none'"> Boat on waves</label>
+        <label class="cb-row"><input type="checkbox" name="aurora"> Aurora</label>
+      </div>
+      <div id="wave2-color-row" style="display:none;margin-bottom:8px">
+        <label>Second wave color <input name="color_wave2" type="color" value="#0a0020"></label>
+      </div>
+      <div id="tide-strength-row" style="display:none;margin-bottom:8px">
+        <label>Tide aggressiveness (0–100) <input name="tide_strength" type="range" min="0" max="100" value="75" oninput="document.getElementById('tide-str-val').textContent=this.value"> <span id="tide-str-val">75</span></label>
+      </div>
+      <div id="boat-colors-row" style="display:none;margin-bottom:8px">
+        <div class="row">
+          <label>Hull color <input name="color_boat_hull" type="color" value="#c87828"></label>
+          <label>Sail color <input name="color_boat_sail" type="color" value="#aa8c3c"></label>
+        </div>
+      </div>
+      <div style="border-top:1px solid #2a2a2a;padding-top:10px;margin-top:4px">
+        <button type="button" style="background:#0f2030;font-size:12px" onclick="applyOceanPalette()">Apply Ocean Palette</button>
       </div>
     </section>
 
@@ -340,8 +311,65 @@
       document.getElementById('wave-speed-row').style.display = val === '0' ? '' : 'none';
     }
 
+    function applyOceanPalette() {
+      const colors = {color_low:'#8e0045', color_warn:'#5386e4',
+                      color_ok:'#00e5cc',  color_wave:'#002080'};
+      fetch('/config', {method:'POST', headers:{'Content-Type':'application/json'},
+                        body: JSON.stringify(colors)})
+        .then(r => r.json())
+        .then(r => {
+          if (!r.ok) return;
+          for (const [k, v] of Object.entries(colors)) {
+            const el = document.querySelector(`[name="${k}"]`);
+            if (el) el.value = v;
+          }
+        });
+    }
+
+    function setAllNoct(v) {
+      const noctFields = ['show_stars','stars_tint','wave_enhanced','wave_tide','boat_ride','aurora'];
+      noctFields.forEach(k => {
+        const el = document.querySelector(`[name="${k}"]`);
+        if (el) el.checked = v;
+      });
+      // Show/hide conditional rows
+      document.getElementById('wave2-color-row').style.display   = v ? '' : 'none';
+      document.getElementById('tide-strength-row').style.display = v ? '' : 'none';
+      document.getElementById('boat-colors-row').style.display   = v ? '' : 'none';
+      const payload = {};
+      noctFields.forEach(k => payload[k] = v);
+      payload.status_bar_style = v ? 0 : 2;
+      if (v) Object.assign(payload, {color_low:'#8e0045', color_warn:'#5386e4',
+                                      color_ok:'#00e5cc',  color_wave:'#002080'});
+      fetch('/config', {method:'POST', headers:{'Content-Type':'application/json'},
+                        body: JSON.stringify(payload)})
+        .then(r => r.json())
+        .then(r => {
+          if (!r.ok) return;
+          // Sync status_bar_style select + wave speed visibility
+          const bsSel = document.getElementById('bar-style-select');
+          if (bsSel) { bsSel.value = String(v ? 0 : 2); applyBarStyleVisibility(bsSel.value); }
+          // Sync color pickers if enabling
+          if (v) {
+            const cp = {color_low:'#8e0045',color_warn:'#5386e4',
+                        color_ok:'#00e5cc', color_wave:'#002080'};
+            for (const [k, cv] of Object.entries(cp)) {
+              const el = document.querySelector(`[name="${k}"]`);
+              if (el) el.value = cv;
+            }
+          }
+        });
+    }
+
     sourceSelect.addEventListener('change', e => applySourceVisibility(e.target.value));
     barStyleSelect.addEventListener('change', e => applyBarStyleVisibility(e.target.value));
+
+    // Checkbox field names — need special handling on load and submit
+    const CHECKBOX_FIELDS = [
+      'clock_24h','show_clock','show_sparkline','sparkline_auto',
+      'sparkline_shadow','sparkline_fill','show_age','show_status_label','auto_rotate',
+      'show_stars','stars_tint','wave_enhanced','wave_tide','boat_ride','aurora',
+    ];
 
     // Populate form with current config on load (passwords excluded).
     fetch('/config')
@@ -349,30 +377,38 @@
       .then(cfg => {
         for (const [key, val] of Object.entries(cfg)) {
           const el = document.querySelector(`[name="${key}"]`);
-          if (el) el.value = val;
+          if (!el) continue;
+          if (el.type === 'checkbox') el.checked = !!val;
+          else el.value = val;
         }
         applySourceVisibility(String(cfg.cgm_source ?? 0));
         applyBarStyleVisibility(String(cfg.status_bar_style ?? 0));
+        // Restore conditional row visibility
+        if (cfg.wave_enhanced) document.getElementById('wave2-color-row').style.display = '';
+        if (cfg.wave_tide)     document.getElementById('tide-strength-row').style.display = '';
+        if (cfg.boat_ride)     document.getElementById('boat-colors-row').style.display = '';
+        if (cfg.tide_strength !== undefined)
+          document.getElementById('tide-str-val').textContent = cfg.tide_strength;
       })
       .catch(() => setStatus('Could not load current config.', true));
 
-    const INT_FIELDS  = ['glucose_low','glucose_high','glucose_warn_low','glucose_warn_high',
-                         'cgm_source','pulse_speed','pulse_min','wave_speed','status_bar_style'];
-    const BOOL_FIELDS = ['dexcom_region_us','unit_mgdl','clock_24h','show_sparkline',
-                         'sparkline_auto','show_age','auto_rotate','show_status_label',
-                         'show_stars'];
+    const INT_FIELDS = ['glucose_low','glucose_high','glucose_warn_low','glucose_warn_high',
+                        'cgm_source','pulse_speed','pulse_min','wave_speed','status_bar_style',
+                        'tide_strength'];
 
     document.getElementById('form').addEventListener('submit', e => {
       e.preventDefault();
       const data = {};
+      // Collect non-checkbox fields from FormData
       new FormData(e.target).forEach((val, key) => {
-        if (INT_FIELDS.includes(key)) {
-          data[key] = parseInt(val, 10);
-        } else if (BOOL_FIELDS.includes(key)) {
-          data[key] = val === 'true';
-        } else {
-          data[key] = val;  // strings and color hex values pass through as-is
-        }
+        if (CHECKBOX_FIELDS.includes(key)) return; // handled below
+        if (INT_FIELDS.includes(key)) data[key] = parseInt(val, 10);
+        else data[key] = val;
+      });
+      // Collect checkboxes explicitly (unchecked ones don't appear in FormData)
+      CHECKBOX_FIELDS.forEach(key => {
+        const el = document.querySelector(`[name="${key}"]`);
+        if (el) data[key] = el.checked;
       });
 
       setStatus('Saving…', false);

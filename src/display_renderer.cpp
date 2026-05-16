@@ -29,7 +29,7 @@ static const HUB75_I2S_CFG::i2s_pins MATRIX_PINS = {
 //  Layout (y=0 is top):
 //    y 0..21   content area
 //      Glucose value  x=1..54   y=3..18  (GFX size-2 font: 12×16 px/char)
-//      Trend arrow    x=55..69  y=7..15  (ASCII size-1 chars)
+//      Trend arrow    x=33..51  y=7..15  (CX=42, CY=11)
 //      Age            x=71..95  y=3..10  (GFX size-1 font: 6×8 px/char)
 //      Status label   x=71..95  y=13..20
 //      Sparkline      x=88..127 y=2..21  (40×20 px bar chart)
@@ -67,12 +67,6 @@ void DisplayRenderer::show_message(const char *line1, const char *line2) {
 // ── Color helpers ─────────────────────────────────────────────────────────────
 
 uint16_t DisplayRenderer::value_color_(int mgdl, const DashConfig &cfg) const {
-  if (cfg.palette_noct) {
-    // Bioluminescent palette: ocean-derived hues replacing traffic-light colors.
-    if (mgdl <= cfg.glucose_low  || mgdl >= cfg.glucose_high)          return dma_->color565(255,  48,  48); // coral
-    if (mgdl <= cfg.glucose_warn_low || mgdl >= cfg.glucose_warn_high)  return dma_->color565(255, 170,   0); // amber-gold
-    return dma_->color565(0, 229, 204); // bioluminescent aqua
-  }
   auto c565 = [this](uint32_t rgb) -> uint16_t {
     return dma_->color565((rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, rgb & 0xFF);
   };
@@ -86,10 +80,6 @@ uint16_t DisplayRenderer::value_color_(int mgdl, const DashConfig &cfg) const {
 // ── Draw sub-methods ──────────────────────────────────────────────────────────
 
 // Scatter ~20 twinkling star pixels across the dark content background.
-// Positions are fixed (deterministic hash with a constant slot); each star
-// has its own sine phase and speed so they twinkle independently but never
-// move. Draw BEFORE all content — content overwrites stars that land under
-// it, leaving them visible only in empty space.
 void DisplayRenderer::draw_sparkles_(const DashConfig &cfg) {
   if (!cfg.show_stars) return;
 
@@ -119,22 +109,6 @@ void DisplayRenderer::draw_sparkles_(const DashConfig &cfg) {
       }
     }
   }
-
-  if (cfg.stars_const) {
-    struct Anchor { int x, y, slot; };
-    static constexpr Anchor ANCHORS[] = {
-      {15,5,201},{21,6,202},{27,5,203},           // belt
-      {90,3,204},{87,8,205},{93,8,206},{90,13,207}, // cross
-      {108,4,208},                                  // lone bright
-    };
-    for (const auto &s : ANCHORS) {
-      float freq  = 0.0010f + px_hash(s.x, s.y, s.slot)    * 0.003f;
-      float phase = px_hash(s.x, s.y, s.slot + 50) * 6.2832f;
-      float bright = 0.5f + 0.5f * (sinf(t * freq + phase) * 0.5f + 0.5f);
-      uint8_t v = (uint8_t)(bright * 255);
-      dma_->drawPixel(s.x, s.y, dma_->color565(v, v, v));
-    }
-  }
 }
 
 // ── Aurora background ─────────────────────────────────────────────────────────
@@ -156,20 +130,6 @@ void DisplayRenderer::draw_aurora_(unsigned long t, const DashConfig &cfg) {
   }
 }
 
-// ── Instrument frame around glucose number ────────────────────────────────────
-void DisplayRenderer::draw_glucose_frame_(int mgdl, const DashConfig &cfg) {
-  if (!cfg.glucose_frame) return;
-  uint16_t c = value_color_(mgdl, cfg);
-  uint8_t r = (uint8_t)(((c >> 11) & 0x1F) << 3);
-  uint8_t g = (uint8_t)(((c >>  5) & 0x3F) << 2);
-  uint8_t b = (uint8_t)(( c        & 0x1F) << 3);
-  uint16_t dim = dma_->color565(r * 28 / 100, g * 28 / 100, b * 28 / 100);
-  dma_->drawFastHLine(1,  2, 54, dim);
-  dma_->drawFastHLine(1, 19, 54, dim);
-  for (int dy = 3; dy <= 4;  dy++) { dma_->drawPixel(1, dy, dim); dma_->drawPixel(54, dy, dim); }
-  for (int dy = 17; dy <= 18; dy++) { dma_->drawPixel(1, dy, dim); dma_->drawPixel(54, dy, dim); }
-}
-
 void DisplayRenderer::draw_glucose_(int value_mgdl, uint16_t color) {
   dma_->setTextSize(2);
   dma_->setTextColor(color);
@@ -179,48 +139,8 @@ void DisplayRenderer::draw_glucose_(int value_mgdl, uint16_t color) {
 
 // ── Trend arrows ──────────────────────────────────────────────────────────────
 
-void DisplayRenderer::draw_line_thick_(int x1, int y1, int x2, int y2, uint16_t color) {
-  dma_->drawLine(x1, y1, x2, y2, color);
-  int adx = abs(x2 - x1), ady = abs(y2 - y1);
-  if (ady > adx) dma_->drawLine(x1+1, y1, x2+1, y2, color);
-  else           dma_->drawLine(x1, y1+1, x2, y2+1, color);
-}
-
-void DisplayRenderer::draw_trend_arrow_bearing_(int trend_code, uint16_t color) {
-  constexpr int CX = 59, CY = 11;
-  // Filled diamond tip: Manhattan distance ≤ 2
-  auto tip = [&](int px, int py) {
-    for (int dy = -2; dy <= 2; dy++)
-      for (int dx = -2; dx <= 2; dx++)
-        if (abs(dx) + abs(dy) <= 2) dma_->drawPixel(px+dx, py+dy, color);
-  };
-  if (trend_code == 1) {
-    draw_line_thick_(CX-3, CY+5, CX-3, CY-2, color); tip(CX-3, CY-4);
-    draw_line_thick_(CX+2, CY+5, CX+2, CY-2, color); tip(CX+2, CY-4);
-    return;
-  }
-  if (trend_code == 7) {
-    draw_line_thick_(CX-3, CY-5, CX-3, CY+2, color); tip(CX-3, CY+4);
-    draw_line_thick_(CX+2, CY-5, CX+2, CY+2, color); tip(CX+2, CY+4);
-    return;
-  }
-  int x1, y1, x2, y2;
-  switch (trend_code) {
-    case 2:  x1=CX;   y1=CY+5; x2=CX;   y2=CY-3; break; // SingleUp
-    case 6:  x1=CX;   y1=CY-5; x2=CX;   y2=CY+3; break; // SingleDown
-    case 3:  x1=CX-4; y1=CY+4; x2=CX+3; y2=CY-3; break; // 45Up
-    case 5:  x1=CX-4; y1=CY-4; x2=CX+3; y2=CY+3; break; // 45Down
-    default: x1=CX-5; y1=CY;   x2=CX+3; y2=CY;   break; // Flat
-  }
-  draw_line_thick_(x1, y1, x2, y2, color);
-  tip(x2, y2);
-}
-
-void DisplayRenderer::draw_trend_arrow_(int trend_code, uint16_t color,
-                                        const DashConfig &cfg) {
-  if (cfg.arrows_bearing) { draw_trend_arrow_bearing_(trend_code, color); return; }
-
-  constexpr int CX = 59, CY = 11;
+void DisplayRenderer::draw_trend_arrow_(int trend_code, uint16_t color) {
+  constexpr int CX = 42, CY = 11;
   struct { int x1,y1,x2,y2; } shaft;
   int hx1=0,hy1=0,hx2=0,hy2=0;
 
@@ -281,21 +201,22 @@ void DisplayRenderer::draw_status_label_(int mgdl, const DashConfig &cfg) {
   if (!cfg.show_status_label) return;
   dma_->setTextSize(1);
   dma_->setCursor(71, 13);
+  dma_->setTextColor(value_color_(mgdl, cfg));
 
-  if (mgdl <= cfg.glucose_low) {
-    dma_->setTextColor(dma_->color565(255, 34, 0));
-    dma_->print("LO");
-  } else if (mgdl >= cfg.glucose_high) {
-    dma_->setTextColor(dma_->color565(255, 34, 0));
-    dma_->print("HI");
-  } else if (mgdl <= cfg.glucose_warn_low) {
-    dma_->setTextColor(dma_->color565(255, 204, 0));
-    dma_->print("LO?");
-  } else if (mgdl >= cfg.glucose_warn_high) {
-    dma_->setTextColor(dma_->color565(255, 204, 0));
-    dma_->print("HI?");
+  if      (mgdl <= cfg.glucose_low)       dma_->print("LO");
+  else if (mgdl >= cfg.glucose_high)      dma_->print("HI");
+  else if (mgdl <= cfg.glucose_warn_low)  dma_->print("LO?");
+  else if (mgdl >= cfg.glucose_warn_high) dma_->print("HI?");
+}
+
+// Draw one horizontal row with edge pixels at 40% brightness.
+void DisplayRenderer::draw_shaded_(int xL, int xR, int y,
+                                   uint8_t r, uint8_t g, uint8_t b) {
+  for (int x = xL; x <= xR; x++) {
+    float dim = (x == xL || x == xR) ? 0.4f : 1.0f;
+    dma_->drawPixel(x, y, dma_->color565(
+      (uint8_t)(r * dim), (uint8_t)(g * dim), (uint8_t)(b * dim)));
   }
-  // In-range: leave blank.
 }
 
 void DisplayRenderer::draw_sparkline_(const std::vector<int> &spark,
@@ -338,18 +259,8 @@ void DisplayRenderer::draw_sparkline_(const std::vector<int> &spark,
     dma_->drawPixel(x, y_for(cfg.glucose_warn_high), gray);
   }
 
-  // Sonar persistence: ghost previous frame at 25% brightness
-  if (cfg.sparkline_sonar && !sparkline_prev_.empty()) {
-    for (const auto &p : sparkline_prev_) {
-      uint8_t r = (uint8_t)(((p.color >> 11) & 0x1F) << 3) / 4;
-      uint8_t g = (uint8_t)(((p.color >>  5) & 0x3F) << 2) / 4;
-      uint8_t b = (uint8_t)(( p.color        & 0x1F) << 3) / 4;
-      dma_->drawPixel(p.x, p.y, dma_->color565(r, g, b));
-    }
-  }
-
-  // Abyss fill: dim gradient from reading color (top) to wave color (bottom)
-  if (cfg.sparkline_wake && count > 0) {
+  // Area fill: gradient from reading color (top) toward wave color (bottom)
+  if (cfg.sparkline_fill && count > 0) {
     uint8_t fw = (cfg.color_wave >> 16) & 0xFF;
     uint8_t gw = (cfg.color_wave >>  8) & 0xFF;
     uint8_t bw =  cfg.color_wave        & 0xFF;
@@ -373,44 +284,35 @@ void DisplayRenderer::draw_sparkline_(const std::vector<int> &spark,
     }
   }
 
-  // Draw line chart — wake trail 1px below before each segment
-  std::vector<SparkPoint> new_prev;
-  if (cfg.sparkline_sonar) new_prev.reserve(count);
-
+  // Draw line chart — optional drop shadow (y+1 at 25% brightness)
   for (size_t i = 1; i < count; i++) {
     int x1 = px_for(i - 1), y1 = y_for(spark[start_i + i - 1]);
     int x2 = px_for(i),     y2 = y_for(spark[start_i + i]);
     uint16_t c = value_color_(spark[start_i + i], cfg);
-    if (cfg.sparkline_wake) {
+    if (cfg.sparkline_shadow) {
       uint8_t r = (uint8_t)(((c >> 11) & 0x1F) << 3) / 4;
       uint8_t g = (uint8_t)(((c >>  5) & 0x3F) << 2) / 4;
       uint8_t b = (uint8_t)(( c        & 0x1F) << 3) / 4;
       dma_->drawLine(x1, y1+1, x2, y2+1, dma_->color565(r, g, b));
     }
     dma_->drawLine(x1, y1, x2, y2, c);
-    if (cfg.sparkline_sonar) new_prev.push_back({(int16_t)x1, (int16_t)y1, c});
   }
   if (count > 0) {
     size_t last = count - 1;
-    int lx = px_for(last), ly = y_for(spark[start_i + last]);
-    uint16_t lc = value_color_(spark[start_i + last], cfg);
-    dma_->drawPixel(lx, ly, lc);
-    if (cfg.sparkline_sonar) new_prev.push_back({(int16_t)lx, (int16_t)ly, lc});
+    dma_->drawPixel(px_for(last), y_for(spark[start_i + last]),
+                    value_color_(spark[start_i + last], cfg));
   }
-
-  sparkline_prev_ = cfg.sparkline_sonar ? std::move(new_prev) : std::vector<SparkPoint>{};
 }
 
 // Fast integer hash for per-pixel noise — no float rand() needed.
 static inline float px_hash(int x, int row, int t_slot) {
   uint32_t n = (uint32_t)(x * 1619 + row * 31337 + t_slot * 3571);
   n ^= (n << 13); n ^= (n >> 17); n ^= (n << 5);
-  return (n & 0xFFFF) / 65535.0f;   // 0..1
+  return (n & 0xFFFF) / 65535.0f;
 }
 
 // Ten-row ocean wave — asymmetric brightness model: dark sky above crest,
-// bright surface, gradually darkening water depth. Wave surface position
-// oscillates per column using four incommensurate sine waves + noise.
+// bright surface, gradually darkening water depth.
 void DisplayRenderer::draw_status_bar_(uint16_t solid_color, int mgdl,
                                        const DashConfig &cfg) {
   constexpr int WAVE_Y = 22;
@@ -433,16 +335,23 @@ void DisplayRenderer::draw_status_bar_(uint16_t solid_color, int mgdl,
   uint8_t wg = (cfg.color_wave >>  8) & 0xFF;
   uint8_t wb =  cfg.color_wave        & 0xFF;
 
-  // Tide: amplitude/baseline shift with glucose zone
+  // Tide: amplitude/baseline shift with glucose zone, scaled by tide_strength
   float amplitude = 1.5f, baseline = 2.5f;
   if (cfg.wave_tide) {
+    float s = cfg.tide_strength / 100.0f;
+    auto lerp = [](float a, float b, float t) { return a + (b - a) * t; };
     bool is_alert = mgdl <= cfg.glucose_low  || mgdl >= cfg.glucose_high;
     bool is_warn  = mgdl <= cfg.glucose_warn_low || mgdl >= cfg.glucose_warn_high;
-    if (is_alert)      { amplitude = 3.8f; baseline = 3.2f; }
-    else if (is_warn)  { amplitude = 2.5f; baseline = 2.8f; }
+    if (is_alert) {
+      amplitude = lerp(1.5f, 3.8f, s);
+      baseline  = lerp(2.5f, 3.2f, s);
+    } else if (is_warn) {
+      amplitude = lerp(1.5f, 2.5f, s);
+      baseline  = lerp(2.5f, 2.8f, s);
+    }
   }
 
-  // Pre-compute surface per column (reused by reflection and particle passes)
+  // Pre-compute surface per column
   float surfaces[128];
   for (int x = 0; x < 128; x++) {
     float wave = sinf(x * 0.130f - ft * 3.00f)
@@ -451,6 +360,11 @@ void DisplayRenderer::draw_status_bar_(uint16_t solid_color, int mgdl,
                + sinf(x * 0.047f + ft * 1.40f) * 0.25f;
     surfaces[x] = baseline + amplitude * (wave / 2.15f);
   }
+
+  // Second wave color components (lerp target for wave_enhanced)
+  uint8_t d2r = (cfg.color_wave2 >> 16) & 0xFF;
+  uint8_t d2g = (cfg.color_wave2 >>  8) & 0xFF;
+  uint8_t d2b =  cfg.color_wave2        & 0xFF;
 
   // Main wave draw
   for (int x = 0; x < 128; x++) {
@@ -469,91 +383,33 @@ void DisplayRenderer::draw_status_bar_(uint16_t solid_color, int mgdl,
       float b_raw   = wb * bright + 18.0f * (1.0f - bright);
       uint8_t b_out = (b_raw > 255.0f) ? 255 : (uint8_t)b_raw;
 
-      // Abyssal depth: lerp hue toward midnight indigo at bottom rows
+      // Second wave color: lerp hue toward color_wave2 at bottom rows
       if (cfg.wave_enhanced) {
         float depth = (float)row / (WAVE_H - 1);
-        r_out = (uint8_t)(r_out * (1.0f - depth * 0.75f) + 15.0f * depth);
-        g_out = (uint8_t)(g_out * (1.0f - depth * 0.85f));
-        float b_abyss = b_out * (1.0f - depth * 0.2f) + 45.0f * depth;
-        b_out = (b_abyss > 255.0f) ? 255 : (uint8_t)b_abyss;
+        r_out = (uint8_t)(r_out * (1.0f - depth * 0.75f) + d2r * depth);
+        g_out = (uint8_t)(g_out * (1.0f - depth * 0.85f) + d2g * depth);
+        float b_deep = b_out * (1.0f - depth * 0.2f) + d2b * depth;
+        b_out = (b_deep > 255.0f) ? 255 : (uint8_t)b_deep;
       }
 
       dma_->drawPixel(x, WAVE_Y + row, dma_->color565(r_out, g_out, b_out));
     }
   }
 
-  if (cfg.wave_enhanced) {
-    static constexpr int STAR_SLOT = 42;
-
-    // Starlight reflections at wave surface
-    float reflPhase = t * 0.0007f;
-    for (int x = 0; x < 128; x++) {
-      if (px_hash(x, 77, STAR_SLOT) < 0.022f) {
-        float v = (0.10f + 0.08f * px_hash(x, 78, STAR_SLOT)) * 230.0f;
-        uint8_t iv = (uint8_t)v;
-        int wobble = (int)(sinf(reflPhase + x * 0.5f));
-        int rx = constrain(x + wobble, 0, 127);
-        int reflRow = constrain((int)surfaces[x] + 1, 0, WAVE_H - 1);
-        dma_->drawPixel(rx, WAVE_Y + reflRow,
-                        dma_->color565(iv, iv, (uint8_t)fminf(255.0f, v * 1.15f)));
-      }
-    }
-
-    // Plankton particles rising above wave crest
-    unsigned long slot = t / 900UL;
-    float phase = (float)(t % 900UL) / 900.0f;
-    for (int x = 0; x < 128; x++) {
-      if (px_hash(x, 99, (int)slot) > 0.94f) {
-        float alpha = fmaxf(0.0f, 1.0f - phase * 1.5f);
-        if (alpha > 0.0f) {
-          uint8_t v = (uint8_t)(alpha * 200.0f);
-          int drift    = (int)(phase * 3.0f);
-          int crestRow = WAVE_Y + constrain((int)surfaces[x] - 1, 0, WAVE_H - 1);
-          int py = crestRow - drift;
-          if (py >= 0) dma_->drawPixel(x, py, dma_->color565(v, (uint8_t)(v * 0.92f), v));
-        }
-      }
-    }
-  }
-}
-
-// 3×5 chronometer pixel font. Column bitmaps: bit0=top row, bit4=bottom row.
-struct ChronoGlyph { uint8_t ncols, cols[4]; };
-static const ChronoGlyph CHRONO_FONT[] = {
-  {3,{31,17,31}}, // '0'
-  {3,{18,31,16}}, // '1'
-  {3,{29,21,23}}, // '2'
-  {3,{21,21,31}}, // '3'
-  {3,{ 7, 4,31}}, // '4'
-  {3,{23,21,29}}, // '5'
-  {3,{31,21,29}}, // '6'
-  {3,{ 1, 1,31}}, // '7'
-  {3,{31,21,31}}, // '8'
-  {3,{23,21,31}}, // '9'
-  {1,{10,0,0,0}}, // ':'  (dots at rows 1 and 3)
-  {2,{ 0, 0}},    // ' '
-  {3,{31, 5,31}}, // 'A'
-  {3,{31, 5, 7}}, // 'P'
-  {4,{31, 3, 3,31}}, // 'M'
-};
-
-static const char *CHRONO_CHARS = "0123456789: APMM"; // index map
-
-void DisplayRenderer::draw_chrono_(const char *text, int cx, int cy, uint16_t color) {
-  auto glyph_for = [](char ch) -> const ChronoGlyph * {
-    const char *p = strchr("0123456789: APM", ch);
-    return p ? &CHRONO_FONT[p - "0123456789: APM"] : &CHRONO_FONT[11]; // fallback space
-  };
-  int x = cx;
-  for (const char *p = text; *p; p++) {
-    const ChronoGlyph &g = *glyph_for(*p);
-    for (int col = 0; col < g.ncols; col++) {
-      for (int row = 0; row < 5; row++) {
-        if (g.cols[col] & (1 << row))
-          dma_->drawPixel(x + col, cy + row, color);
-      }
-    }
-    x += g.ncols + 1;
+  // Boat: right-triangle sail + 7px raft at waterline
+  if (cfg.boat_ride) {
+    const int bx = 62;
+    const int by = WAVE_Y + constrain((int)surfaces[bx], 0, WAVE_H - 1);
+    uint8_t hr = (cfg.color_boat_hull >> 16) & 0xFF;
+    uint8_t hg = (cfg.color_boat_hull >>  8) & 0xFF;
+    uint8_t hb =  cfg.color_boat_hull        & 0xFF;
+    uint8_t sr = (cfg.color_boat_sail >> 16) & 0xFF;
+    uint8_t sg = (cfg.color_boat_sail >>  8) & 0xFF;
+    uint8_t sb =  cfg.color_boat_sail        & 0xFF;
+    draw_shaded_(bx-3, bx+3, by,   hr, hg, hb);  // raft: 7px
+    draw_shaded_(bx-2, bx+2, by-2, sr, sg, sb);  // sail base: 5px
+    draw_shaded_(bx,   bx+2, by-3, sr, sg, sb);  // sail mid: 3px right-aligned
+    dma_->drawPixel(bx+2, by-4, dma_->color565(sr/2, sg/2, sb/2)); // sail tip
   }
 }
 
@@ -586,15 +442,10 @@ void DisplayRenderer::draw_bottom_msg_(const CGMData &data, const DashConfig &cf
     snprintf(buf, sizeof(buf), "%d:%02d %s", hour, t.tm_min,
              t.tm_hour < 12 ? "AM" : "PM");
   }
-
-  if (cfg.clock_chrono) {
-    draw_chrono_(buf, 2, 25, dma_->color565(80, 200, 215));
-  } else {
-    dma_->setTextSize(1);
-    dma_->setCursor(2, 24);
-    dma_->setTextColor(dma_->color565(220, 220, 220));
-    dma_->print(buf);
-  }
+  dma_->setTextSize(1);
+  dma_->setCursor(2, 24);
+  dma_->setTextColor(dma_->color565(220, 220, 220));
+  dma_->print(buf);
 }
 
 // ── Main draw entry point ─────────────────────────────────────────────────────
@@ -610,13 +461,12 @@ void DisplayRenderer::draw(const CGMData &data, const DashConfig &cfg) {
   draw_sparkles_(cfg);
 
   if (!data.valid) {
-    uint16_t alert_c = cfg.palette_noct
-      ? dma_->color565(255, 48, 48)
-      : dma_->color565((cfg.color_low >> 16) & 0xFF,
-                       (cfg.color_low >>  8) & 0xFF,
-                        cfg.color_low        & 0xFF);
-    draw_status_bar_(alert_c, 40 /* treat as low */, cfg);
-    draw_bottom_msg_(data, cfg);
+    uint16_t alert_c = dma_->color565(
+      (cfg.color_low >> 16) & 0xFF,
+      (cfg.color_low >>  8) & 0xFF,
+       cfg.color_low        & 0xFF);
+    draw_status_bar_(alert_c, 40, cfg);
+    if (cfg.show_clock) draw_bottom_msg_(data, cfg);
     dma_->flipDMABuffer();
     return;
   }
@@ -625,46 +475,27 @@ void DisplayRenderer::draw(const CGMData &data, const DashConfig &cfg) {
   uint16_t color = value_color_(mgdl, cfg);
   bool     alert = (mgdl <= cfg.glucose_low || mgdl >= cfg.glucose_high);
 
-  draw_glucose_frame_(mgdl, cfg);
-
+  // Compute pulse color once — used by both arrow and glucose text
+  uint16_t pulse_color = color;
   if (alert) {
-    float freq  = (cfg.pulse_speed == 0) ? 0.003142f
-                : (cfg.pulse_speed == 2) ? 0.012566f
-                :                          0.006283f;
+    float freq  = (cfg.pulse_speed == 0) ? 0.001571f   // 0.25 Hz
+                : (cfg.pulse_speed == 2) ? 0.006283f   // 1.0 Hz
+                :                          0.003142f;  // 0.5 Hz
     float min_f = cfg.pulse_min / 100.0f;
     float pulse = (1.0f + min_f) * 0.5f + (1.0f - min_f) * 0.5f * sinf(now_ms * freq);
     uint8_t r = (uint8_t)(((color >> 11) & 0x1F) * 8 * pulse);
     uint8_t g = (uint8_t)(((color >>  5) & 0x3F) * 4 * pulse);
     uint8_t b = (uint8_t)(( color        & 0x1F) * 8 * pulse);
-    draw_glucose_(mgdl, dma_->color565(r, g, b));
-  } else {
-    draw_glucose_(mgdl, color);
+    pulse_color = dma_->color565(r, g, b);
   }
 
-  draw_trend_arrow_(data.current.trend_code, color, cfg);
+  draw_trend_arrow_(data.current.trend_code, pulse_color);
+  draw_glucose_(mgdl, pulse_color);
   draw_age_(data.current.timestamp, cfg);
   draw_status_label_(mgdl, cfg);
   draw_sparkline_(data.sparkline, cfg);
   draw_status_bar_(color, mgdl, cfg);
-  draw_bottom_msg_(data, cfg);
-
-  // Alert sweep: bioluminescent flash races L→R each pulse cycle
-  if (cfg.alert_sweep && alert) {
-    unsigned long period = (cfg.pulse_speed == 0) ? 2000UL
-                         : (cfg.pulse_speed == 2) ?  500UL : 1000UL;
-    unsigned long phase_ms = now_ms % period;
-    unsigned long sweep_window = period * 38 / 100;
-    if (phase_ms < sweep_window) {
-      int sweepX = (int)((float)phase_ms / sweep_window * 134);
-      float fade = 1.0f - (float)phase_ms / sweep_window;
-      for (int y = 0; y < 32; y++) {
-        auto sv = [&](float f) -> uint8_t { return (uint8_t)(fade * f); };
-        if (sweepX     < 128) dma_->drawPixel(sweepX,   y, dma_->color565(0, sv(170), sv(140)));
-        if (sweepX - 1 >= 0)  dma_->drawPixel(sweepX-1, y, dma_->color565(0, sv(55),  sv(45)));
-        if (sweepX - 2 >= 0)  dma_->drawPixel(sweepX-2, y, dma_->color565(0, sv(18),  sv(15)));
-      }
-    }
-  }
+  if (cfg.show_clock) draw_bottom_msg_(data, cfg);
 
   dma_->flipDMABuffer();
 }

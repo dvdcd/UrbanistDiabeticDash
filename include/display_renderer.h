@@ -20,22 +20,16 @@ class DisplayRenderer {
  private:
   void draw_aurora_(unsigned long t, const DashConfig &cfg);
   void draw_sparkles_(const DashConfig &cfg);
-  void draw_glucose_frame_(int mgdl, const DashConfig &cfg);
   void draw_glucose_(int value_mgdl, uint16_t color);
-  void draw_trend_arrow_(int trend_code, uint16_t color, const DashConfig &cfg);
-  void draw_trend_arrow_bearing_(int trend_code, uint16_t color);
-  void draw_line_thick_(int x1, int y1, int x2, int y2, uint16_t color);
+  void draw_trend_arrow_(int trend_code, uint16_t color);
   void draw_age_(time_t timestamp, const DashConfig &cfg);
   void draw_status_label_(int value_mgdl, const DashConfig &cfg);
   void draw_sparkline_(const std::vector<int> &spark, const DashConfig &cfg);
   void draw_status_bar_(uint16_t color, int mgdl, const DashConfig &cfg);
   void draw_bottom_msg_(const CGMData &data, const DashConfig &cfg);
-  void draw_chrono_(const char *text, int cx, int cy, uint16_t color);
+  void draw_shaded_(int xL, int xR, int y, uint8_t r, uint8_t g, uint8_t b);
 
   uint16_t value_color_(int mgdl, const DashConfig &cfg) const;
-
-  struct SparkPoint { int16_t x, y; uint16_t color; };
-  std::vector<SparkPoint> sparkline_prev_;
 
   MatrixPanel_I2S_DMA *dma_     = nullptr;
   bool                 flipped_ = false;

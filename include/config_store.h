@@ -25,34 +25,34 @@ struct DashConfig {
   bool      unit_mgdl          = true;
   // Style
   bool      clock_24h          = false;
-  int       pulse_speed        = 1;     // 0=slow(0.5Hz), 1=normal(1Hz), 2=fast(2Hz)
+  bool      show_clock         = true;    // show clock / stale in bottom bar
+  int       pulse_speed        = 1;     // 0=0.25Hz, 1=0.5Hz, 2=1Hz
   int       pulse_min          = 50;    // minimum brightness % during alert pulse
-  int       wave_speed         = 1;     // 0=slow, 1=normal, 2=fast
-  int       status_bar_style   = 0;     // 0=wave, 1=solid, 2=off
+  int       wave_speed         = 0;     // 0=slow, 1=normal, 2=fast
+  int       status_bar_style   = 2;     // 0=wave, 1=solid, 2=off
   bool      show_sparkline     = true;
   bool      sparkline_auto     = false; // false=fixed 40-400, true=auto-range
+  bool      sparkline_shadow   = false; // drop shadow: y+1 line at 25% brightness
+  bool      sparkline_fill     = false; // area gradient fill below sparkline
   bool      show_age           = true;
   bool      auto_rotate        = true;
   bool      show_status_label  = true;
-  bool      show_stars         = true;   // twinkle stars in background
+  bool      show_stars         = false;  // twinkle stars in background
   // Colors (packed 0x00RRGGBB)
   uint32_t  color_low          = 0xFF2200;  // low/high alert
   uint32_t  color_warn         = 0xFFCC00;  // warning threshold
   uint32_t  color_ok           = 0x00CC44;  // in-range
   uint32_t  color_wave         = 0x0035D2;  // wave base color
+  uint32_t  color_wave2        = 0x0a0020;  // second wave color (wave_enhanced lerp target)
+  uint32_t  color_boat_hull    = 0xC87828;  // boat raft/hull color
+  uint32_t  color_boat_sail    = 0xAA8C3C;  // boat sail color
   // Noctiluca theme (all optional, off by default)
-  bool wave_enhanced    = false;  // abyssal depth gradient + starlight reflection + plankton particles
-  bool wave_tide        = false;  // wave amplitude/baseline encodes glucose zone (calm → rough)
-  bool stars_const      = false;  // hand-placed constellation anchor stars
+  bool wave_enhanced    = false;  // second wave color gradient toward color_wave2
+  bool wave_tide        = false;  // wave amplitude/baseline encodes glucose zone
+  int  tide_strength    = 75;     // 0=no tide effect, 100=full effect
   bool stars_tint       = false;  // horizon glow: lower stars blended toward wave color
-  bool sparkline_wake   = false;  // wake trail below line + abyss gradient fill
-  bool sparkline_sonar  = false;  // phosphor persistence — previous frame ghosted at 25%
-  bool palette_noct     = false;  // bioluminescent palette: aqua / amber-gold / coral
-  bool arrows_bearing   = false;  // thick shafts + filled diamond heads
+  bool boat_ride        = false;  // small boat sprite bobbing on wave surface
   bool aurora           = false;  // faint teal/violet aurora bands in content background
-  bool alert_sweep      = false;  // bioluminescent flash sweeps L→R on each alert pulse
-  bool glucose_frame    = false;  // thin instrument frame above/below glucose number
-  bool clock_chrono     = false;  // 3×5 chronometer pixel font for clock
 };
 
 class ConfigStore {
